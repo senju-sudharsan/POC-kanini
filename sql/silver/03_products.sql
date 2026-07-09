@@ -41,14 +41,23 @@ INSERT INTO silver.products
 SELECT
     product_id,
     UPPER(product_category_name),
-    product_name_lenght,
-    product_description_lenght,
-    product_photos_qty,
-    product_weight_g,
-    product_length_cm,
-    product_height_cm,
-    product_width_cm,
+
+    CAST(product_name_lenght AS INTEGER),
+
+    CAST(product_description_lenght AS INTEGER),
+
+    CAST(product_photos_qty AS INTEGER),
+
+    CAST(product_weight_g AS NUMERIC),
+
+    CAST(product_length_cm AS NUMERIC),
+
+    CAST(product_height_cm AS NUMERIC),
+
+    CAST(product_width_cm AS NUMERIC),
+
     batch_id
+
 FROM bronze.products_raw;
 
 SELECT COUNT(*) AS product_count
