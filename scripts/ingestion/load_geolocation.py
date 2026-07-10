@@ -2,7 +2,7 @@ import pandas as pd
 from sqlalchemy import create_engine, text
 
 engine = create_engine(
-    "postgresql+psycopg2://postgres:postgres@localhost:5433/de_poc"
+    "postgresql+psycopg2://postgres:postgres@de_poc_postgres:5432/de_poc"
 )
 
 with engine.begin() as conn:
@@ -27,7 +27,7 @@ with engine.begin() as conn:
 print(f"Batch Created: {batch_id}")
 
 df = pd.read_csv(
-    "data/raw/olist_geolocation_dataset.csv",
+    "/opt/airflow/data/raw/olist_geolocation_dataset.csv",
     dtype=str
 )
 

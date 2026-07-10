@@ -2,15 +2,15 @@ import subprocess
 import sys
 
 LOADERS = [
-    "scripts/ingestion/load_customers.py",
-    "scripts/ingestion/load_orders.py",
-    "scripts/ingestion/load_order_items.py",
-    "scripts/ingestion/load_payments.py",
-    "scripts/ingestion/load_products.py",
-    "scripts/ingestion/load_reviews.py",
-    "scripts/ingestion/load_sellers.py",
-    "scripts/ingestion/load_geolocation.py",
-    "scripts/ingestion/load_category_translation.py"
+    "ingestion/load_customers.py",
+    "ingestion/load_orders.py",
+    "ingestion/load_order_items.py",
+    "ingestion/load_payments.py",
+    "ingestion/load_products.py",
+    "ingestion/load_reviews.py",
+    "ingestion/load_sellers.py",
+    "ingestion/load_geolocation.py",
+    "ingestion/load_category_translation.py"
 ]
 
 for loader in LOADERS:
