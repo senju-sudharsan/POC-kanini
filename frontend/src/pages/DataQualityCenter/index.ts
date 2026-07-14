@@ -1,0 +1,1 @@
+export { DataQualityCenterPage } from './DataQualityCenterPage'

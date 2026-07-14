@@ -1,0 +1,85 @@
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", monospace;
+
+  /* Neutral surface ramp — near-black base, single zinc-style gray scale */
+  --color-surface-0: #08090b;   /* app background */
+  --color-surface-1: #0e1013;   /* sidebar / topbar */
+  --color-surface-2: #131519;   /* card */
+  --color-surface-3: #1a1d22;   /* card hover / raised */
+  --color-border: #23262c;
+  --color-border-strong: #2f333b;
+
+  --color-text-primary: #f4f5f7;
+  --color-text-secondary: #a4a8b0;
+  --color-text-muted: #6b7078;
+
+  /* Single accent — restrained indigo, used for interactive/positive/brand */
+  --color-accent: #6e7bf2;
+  --color-accent-strong: #838ef5;
+  --color-accent-soft: #6e7bf21a;
+
+  /* Semantic status — used ONLY for pipeline/validation state */
+  --color-success: #34c78a;
+  --color-success-soft: #34c78a1a;
+  --color-warning: #e5a94b;
+  --color-warning-soft: #e5a94b1a;
+  --color-danger: #e2604f;
+  --color-danger-soft: #e2604f1a;
+
+  /* Chart categorical palette — derived from accent, 5 steps max */
+  --color-chart-1: #6e7bf2;
+  --color-chart-2: #4fb8d1;
+  --color-chart-3: #34c78a;
+  --color-chart-4: #e5a94b;
+  --color-chart-5: #a4a8b0;
+
+  --radius-card: 0.625rem;
+  --radius-control: 0.5rem;
+
+  --ease-out-standard: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: var(--color-surface-0);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    background-color: var(--color-accent-soft);
+    color: var(--color-text-primary);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
