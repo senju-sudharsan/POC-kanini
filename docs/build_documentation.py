@@ -142,21 +142,25 @@ def _diagram_font(size, bold=False):
     return ImageFont.truetype(font_name, size)
 
 
+def _color(value):
+    return f"#{value}" if len(value) == 6 and not value.startswith("#") else value
+
+
 def _draw_centered(draw, box, text, font, fill="FFFFFF"):
     left, top, right, bottom = box
     bbox = draw.multiline_textbbox((0, 0), text, font=font, spacing=4, align="center")
     x = left + (right - left - (bbox[2] - bbox[0])) / 2
     y = top + (bottom - top - (bbox[3] - bbox[1])) / 2
-    draw.multiline_text((x, y), text, font=font, fill=fill, spacing=4, align="center")
+    draw.multiline_text((x, y), text, font=font, fill=_color(fill), spacing=4, align="center")
 
 
 def _box(draw, box, text, fill, outline, size=25):
-    draw.rounded_rectangle(box, radius=18, fill=fill, outline=outline, width=4)
+    draw.rounded_rectangle(box, radius=18, fill=_color(fill), outline=_color(outline), width=4)
     _draw_centered(draw, box, text, _diagram_font(size, bold=True))
 
 
 def _arrow(draw, start, end, color="A855F7", width=6):
-    draw.line([start, end], fill=color, width=width)
+    draw.line([start, end], fill=_color(color), width=width)
     x1, y1 = start
     x2, y2 = end
     if abs(x2 - x1) >= abs(y2 - y1):
@@ -165,12 +169,12 @@ def _arrow(draw, start, end, color="A855F7", width=6):
     else:
         direction = 1 if y2 > y1 else -1
         points = [(x2, y2), (x2 - 11, y2 - 18 * direction), (x2 + 11, y2 - 18 * direction)]
-    draw.polygon(points, fill=color)
+    draw.polygon(points, fill=_color(color))
 
 
 def make_diagrams():
     FIGURES.mkdir(exist_ok=True)
-    background = "0F172A"
+    background = "#0F172A"
 
     # Diagram 1: supplied end-to-end architecture.
     image = Image.new("RGB", (1600, 980), background)
@@ -207,11 +211,11 @@ def make_diagrams():
         (980, "Gold Layer", "4A3B12", "FFD700", ["sales_summary", "product_performance", "seller_performance"]),
     ]
     for left, title, fill, stroke, tables in groups:
-        draw.rounded_rectangle((left, 160, left + 300, 820), radius=22, fill=fill, outline=stroke, width=4)
+        draw.rounded_rectangle((left, 160, left + 300, 820), radius=22, fill=_color(fill), outline=_color(stroke), width=4)
         _draw_centered(draw, (left, 178, left + 300, 228), title, _diagram_font(25, True))
         for index, table in enumerate(tables):
             top = 250 + index * 75
-            draw.rounded_rectangle((left + 30, top, left + 270, top + 52), radius=10, fill="1E293B", outline=stroke, width=2)
+            draw.rounded_rectangle((left + 30, top, left + 270, top + 52), radius=10, fill=_color("1E293B"), outline=_color(stroke), width=2)
             _draw_centered(draw, (left + 30, top, left + 270, top + 52), table, _diagram_font(17), "FFFFFF")
     _box(draw, (1350, 320, 1510, 430), "FastAPI", "7C3AED", "A855F7", 21)
     _box(draw, (1350, 570, 1510, 680), "React\nDashboard", "A855F7", "C084FC", 21)
