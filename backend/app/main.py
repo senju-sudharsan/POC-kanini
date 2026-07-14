@@ -6,6 +6,7 @@ from app.routes.pipeline import router as pipeline_router
 from app.routes.medallion import router as medallion_router
 from app.routes.quality import router as quality_router
 from app.routes.analytics import router as analytics_router
+from app.routes.scd import router as scd_router
 
 app = FastAPI(
     title="Olist Data Warehouse API",
@@ -27,6 +28,7 @@ app.include_router(pipeline_router)
 app.include_router(medallion_router)
 app.include_router(quality_router)
 app.include_router(analytics_router)
+app.include_router(scd_router)
 
 @app.get("/")
 def root():

@@ -13,7 +13,7 @@ export function ArchitectureSummaryPanel() {
     <Card>
       <CardHeader>
         <div>
-          <CardTitle>Medallion architecture</CardTitle>
+          <CardTitle>Dataset Explorer</CardTitle>
           <p className="mt-1 text-xs text-[var(--color-text-muted)]">
             Raw CSVs flow through three validated warehouse layers.
           </p>

@@ -1,209 +1,144 @@
-from datetime import datetime
+"""Apply customer Slowly Changing Dimension updates from silver.customers.
+
+Run from the scripts directory, for example:
+    python scd.py --type 1
+    python scd.py --type 2
+"""
+
+from __future__ import annotations
+
+import argparse
 
 from utils.db import get_connection
 
 
-def initial_load():
-    """
-    Loads customers into SCD table for first time.
-    """
+TYPE_1_UPDATE_SQL = """
+    UPDATE silver.customers_scd AS target
+    SET
+        customer_city = source.customer_city,
+        customer_state = source.customer_state
+    FROM silver.customers AS source
+    WHERE target.customer_id = source.customer_id
+      AND target.is_current = TRUE
+      AND (
+          target.customer_city IS DISTINCT FROM source.customer_city
+          OR target.customer_state IS DISTINCT FROM source.customer_state
+      );
+"""
 
-    conn = get_connection()
+INSERT_NEW_CUSTOMERS_SQL = """
+    INSERT INTO silver.customers_scd (
+        customer_id,
+        customer_city,
+        customer_state,
+        effective_start_date,
+        effective_end_date,
+        is_current,
+        version_number
+    )
+    SELECT
+        source.customer_id,
+        source.customer_city,
+        source.customer_state,
+        CURRENT_TIMESTAMP,
+        NULL,
+        TRUE,
+        1
+    FROM silver.customers AS source
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM silver.customers_scd AS target
+        WHERE target.customer_id = source.customer_id
+    );
+"""
 
+TYPE_2_EXPIRE_AND_INSERT_SQL = """
+    WITH expired_rows AS (
+        UPDATE silver.customers_scd AS target
+        SET
+            effective_end_date = CURRENT_TIMESTAMP,
+            is_current = FALSE
+        FROM silver.customers AS source
+        WHERE target.customer_id = source.customer_id
+          AND target.is_current = TRUE
+          AND (
+              target.customer_city IS DISTINCT FROM source.customer_city
+              OR target.customer_state IS DISTINCT FROM source.customer_state
+          )
+        RETURNING target.customer_id, target.version_number
+    )
+    INSERT INTO silver.customers_scd (
+        customer_id,
+        customer_city,
+        customer_state,
+        effective_start_date,
+        effective_end_date,
+        is_current,
+        version_number
+    )
+    SELECT
+        source.customer_id,
+        source.customer_city,
+        source.customer_state,
+        CURRENT_TIMESTAMP,
+        NULL,
+        TRUE,
+        expired_rows.version_number + 1
+    FROM expired_rows
+    JOIN silver.customers AS source
+      ON source.customer_id = expired_rows.customer_id;
+"""
+
+
+def _execute(cursor, statement: str) -> int:
+    cursor.execute(statement)
+    return cursor.rowcount
+
+
+def run_scd_type_1() -> tuple[int, int]:
+    """Overwrite current city and state values; do not create history versions."""
+    connection = get_connection()
     try:
-        cur = conn.cursor()
-
-        cur.execute("""
-            INSERT INTO silver.customer_scd
-            (
-                customer_id,
-                customer_unique_id,
-                customer_zip_code_prefix,
-                customer_city,
-                customer_state,
-                effective_start_date,
-                current_flag,
-                version_number,
-                source_batch_id
-            )
-            SELECT
-                customer_id,
-                customer_unique_id,
-                customer_zip_code_prefix,
-                customer_city,
-                customer_state,
-                CURRENT_TIMESTAMP,
-                'Y',
-                1,
-                source_batch_id
-            FROM silver.customers
-            WHERE customer_id NOT IN
-            (
-                SELECT customer_id
-                FROM silver.customer_scd
-            );
-        """)
-
-        conn.commit()
-
-        print("Initial SCD load completed.")
-
-    except Exception as e:
-        conn.rollback()
-        print(f"Error: {e}")
-
+        with connection.cursor() as cursor:
+            updated = _execute(cursor, TYPE_1_UPDATE_SQL)
+            inserted = _execute(cursor, INSERT_NEW_CUSTOMERS_SQL)
+        connection.commit()
+        return updated, inserted
+    except Exception:
+        connection.rollback()
+        raise
     finally:
-        cur.close()
-        conn.close()
+        connection.close()
 
 
-def scd_type1():
-    """
-    Overwrite customer attributes.
-    No history maintained.
-    """
-
-    conn = get_connection()
-
+def run_scd_type_2() -> tuple[int, int]:
+    """Expire changed current rows and add a new current version for each."""
+    connection = get_connection()
     try:
-        cur = conn.cursor()
-
-        cur.execute("""
-            UPDATE silver.customer_scd scd
-            SET
-                customer_city = src.customer_city,
-                customer_state = src.customer_state,
-                customer_zip_code_prefix = src.customer_zip_code_prefix
-            FROM silver.customers src
-            WHERE scd.customer_id = src.customer_id
-            AND scd.current_flag = 'Y';
-        """)
-
-        conn.commit()
-
-        print("SCD Type 1 completed.")
-
-    except Exception as e:
-        conn.rollback()
-        print(f"Error: {e}")
-
+        with connection.cursor() as cursor:
+            versioned = _execute(cursor, TYPE_2_EXPIRE_AND_INSERT_SQL)
+            inserted = _execute(cursor, INSERT_NEW_CUSTOMERS_SQL)
+        connection.commit()
+        return versioned, inserted
+    except Exception:
+        connection.rollback()
+        raise
     finally:
-        cur.close()
-        conn.close()
+        connection.close()
 
 
-def scd_type2():
-    """
-    Detect changes and preserve history.
-    """
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Apply customer SCD updates from silver.customers.")
+    parser.add_argument("--type", choices=("1", "2"), required=True, help="SCD strategy to apply.")
+    args = parser.parse_args()
 
-    conn = get_connection()
+    if args.type == "1":
+        updated, inserted = run_scd_type_1()
+        print(f"SCD Type 1 complete: {updated} current rows overwritten, {inserted} customers inserted.")
+        return
 
-    try:
-        cur = conn.cursor()
-
-        cur.execute("""
-            SELECT
-                src.customer_id,
-                src.customer_unique_id,
-                src.customer_zip_code_prefix,
-                src.customer_city,
-                src.customer_state,
-                src.source_batch_id,
-                scd.version_number
-            FROM silver.customers src
-            JOIN silver.customer_scd scd
-                ON src.customer_id = scd.customer_id
-            WHERE scd.current_flag = 'Y'
-            AND (
-                COALESCE(src.customer_city,'') <> COALESCE(scd.customer_city,'')
-                OR
-                COALESCE(src.customer_state,'') <> COALESCE(scd.customer_state,'')
-                OR
-                COALESCE(src.customer_zip_code_prefix,'') <> COALESCE(scd.customer_zip_code_prefix,'')
-            );
-        """)
-
-        changed_rows = cur.fetchall()
-
-        for row in changed_rows:
-
-            customer_id = row[0]
-
-            cur.execute("""
-                UPDATE silver.customer_scd
-                SET
-                    current_flag = 'N',
-                    effective_end_date = CURRENT_TIMESTAMP
-                WHERE customer_id = %s
-                AND current_flag = 'Y';
-            """, (customer_id,))
-
-            cur.execute("""
-                INSERT INTO silver.customer_scd
-                (
-                    customer_id,
-                    customer_unique_id,
-                    customer_zip_code_prefix,
-                    customer_city,
-                    customer_state,
-                    effective_start_date,
-                    current_flag,
-                    version_number,
-                    source_batch_id
-                )
-                VALUES
-                (
-                    %s,%s,%s,%s,%s,
-                    CURRENT_TIMESTAMP,
-                    'Y',
-                    %s,
-                    %s
-                );
-            """,
-            (
-                row[0],
-                row[1],
-                row[2],
-                row[3],
-                row[4],
-                row[6] + 1,
-                row[5]
-            ))
-
-        conn.commit()
-
-        print(f"SCD Type 2 completed. {len(changed_rows)} changes processed.")
-
-    except Exception as e:
-        conn.rollback()
-        print(f"Error: {e}")
-
-    finally:
-        cur.close()
-        conn.close()
-
-
-def main():
-
-    print("\n=== CUSTOMER SCD PROCESS ===")
-    print("1 - Initial Load")
-    print("2 - SCD Type 1")
-    print("3 - SCD Type 2")
-
-    choice = input("\nSelect option: ")
-
-    if choice == "1":
-        initial_load()
-
-    elif choice == "2":
-        scd_type1()
-
-    elif choice == "3":
-        scd_type2()
-
-    else:
-        print("Invalid option")
+    versioned, inserted = run_scd_type_2()
+    print(f"SCD Type 2 complete: {versioned} customer versions created, {inserted} customers inserted.")
 
 
 if __name__ == "__main__":

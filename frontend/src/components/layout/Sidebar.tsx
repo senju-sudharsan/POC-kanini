@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
   { to: '/overview', label: 'Overview', icon: LayoutDashboard },
-  { to: '/medallion', label: 'Medallion Explorer', icon: Boxes },
+  { to: '/medallion', label: 'Dataset Explorer', icon: Boxes },
   { to: '/pipeline', label: 'Pipeline Health', icon: Activity },
   { to: '/analytics', label: 'Business Intelligence', icon: BarChart3 },
   { to: '/quality', label: 'Data Quality', icon: ShieldCheck },
@@ -18,7 +18,7 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   return (
-    <aside className="hidden w-60 shrink-0 flex-col border-r border-[var(--color-border)] bg-[var(--color-surface-1)] md:flex">
+    <aside className="hidden min-h-screen w-60 shrink-0 flex-col border-r border-[var(--color-border)] bg-[var(--color-surface-1)] md:flex">
       <div className="flex h-14 items-center gap-2.5 px-5">
         <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[var(--color-accent)]">
           <div className="h-2 w-2 rounded-sm bg-white" />

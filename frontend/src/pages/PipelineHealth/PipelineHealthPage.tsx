@@ -9,6 +9,13 @@ import { useBatchHistory } from '@/features/pipeline/hooks/useBatchHistory'
 import { useLatestBatch } from '@/features/pipeline/hooks/useLatestBatch'
 import { formatAbsoluteTime, formatDuration, formatNumber } from '@/lib/formatters'
 
+const PIPELINE_FEATURES = [
+  { title: 'Incremental Loading', description: 'Processes newly arrived customer source batches.' },
+  { title: 'Metadata Framework', description: 'Tracks batch timing, status, and processing volumes.' },
+  { title: 'Audit Framework', description: 'Validates warehouse records and layer-level outcomes.' },
+  { title: 'Error Logging Framework', description: 'Captures failed runs for investigation and recovery.' },
+] as const
+
 export function PipelineHealthPage() {
   const { batchId } = useParams()
   const latestBatch = useLatestBatch()
@@ -17,9 +24,9 @@ export function PipelineHealthPage() {
   const batchDetail = useBatchDetail(selectedBatchId)
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="flex min-h-screen min-w-0 flex-col">
       <TopBar title="Pipeline Health" description="Batch runs, duration, and validation status" />
-      <div className="flex-1 space-y-6 p-6">
+      <div className="flex-1 space-y-6 p-6 pb-6">
         <Card>
           <CardHeader><div><CardTitle>Latest batch</CardTitle><p className="mt-1 text-xs text-[var(--color-text-muted)]">Automatically refreshed every minute.</p></div></CardHeader>
           <CardContent>
@@ -28,6 +35,15 @@ export function PipelineHealthPage() {
             {latestBatch.data && <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5"><div><p className="text-xs text-[var(--color-text-muted)]">Batch</p><p className="mt-1 font-mono text-sm text-[var(--color-text-primary)]">{latestBatch.data.batchId}</p></div><div><p className="text-xs text-[var(--color-text-muted)]">Run status</p><div className="mt-1"><StatusBadge status={latestBatch.data.status} /></div></div><div><p className="text-xs text-[var(--color-text-muted)]">Duration</p><p className="mt-1 text-sm text-[var(--color-text-primary)]">{formatDuration(latestBatch.data.durationSeconds)}</p></div><div><p className="text-xs text-[var(--color-text-muted)]">Rows processed</p><p className="mt-1 tabular-nums text-sm text-[var(--color-text-primary)]">{formatNumber(latestBatch.data.rowsProcessed)}</p></div><div><p className="text-xs text-[var(--color-text-muted)]">Validation</p><div className="mt-1"><StatusBadge status={latestBatch.data.validationStatus} /></div></div></div>}
           </CardContent>
         </Card>
+
+        <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Pipeline capabilities">
+          {PIPELINE_FEATURES.map((feature) => (
+            <Card key={feature.title} className="min-h-28 p-4">
+              <CardTitle className="text-[var(--color-text-primary)]">{feature.title}</CardTitle>
+              <p className="mt-2 text-xs leading-relaxed text-[var(--color-text-secondary)]">{feature.description}</p>
+            </Card>
+          ))}
+        </section>
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
           <Card>

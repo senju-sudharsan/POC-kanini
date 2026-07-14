@@ -16,10 +16,10 @@ export function MedallionExplorerPage() {
   const tableDetail = useLayerTableDetail(layerId, tableName)
 
   return (
-    <div className="flex flex-1 flex-col">
-      <TopBar title="Medallion Architecture Explorer" description="CSV → Bronze → Silver → Gold → Insights" />
+    <div className="flex min-h-screen min-w-0 flex-col">
+      <TopBar title="Dataset Explorer" description="CSV → Bronze → Silver → Gold → Insights" />
 
-      <div className="flex-1 space-y-6 p-6">
+      <div className="flex-1 space-y-6 p-6 pb-6">
         {layers.isLoading && <LoadingState variant="card" count={3} />}
         {layers.isError && (
           <ErrorState
@@ -28,7 +28,7 @@ export function MedallionExplorerPage() {
           />
         )}
         {layers.data && (
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-4">
             {layers.data.layers.map((layer) => (
               <Card key={layer.id} className="flex flex-col">
                 <CardHeader>
@@ -59,6 +59,23 @@ export function MedallionExplorerPage() {
                 </CardContent>
               </Card>
             ))}
+            <Card className="flex flex-col">
+              <CardHeader>
+                <div>
+                  <CardTitle>Business Transformations</CardTitle>
+                  <p className="mt-1 text-xs leading-relaxed text-[var(--color-text-muted)]">
+                    The governed transformations that make warehouse datasets ready for business use.
+                  </p>
+                </div>
+              </CardHeader>
+              <CardContent className="flex flex-1 flex-col">
+                <div className="space-y-3 text-sm">
+                  <div><p className="font-medium text-[var(--color-text-primary)]">Conformance</p><p className="mt-0.5 text-xs text-[var(--color-text-secondary)]">Standardize source fields into trusted Silver datasets.</p></div>
+                  <div><p className="font-medium text-[var(--color-text-primary)]">History management</p><p className="mt-0.5 text-xs text-[var(--color-text-secondary)]">Preserve customer changes through SCD processing.</p></div>
+                  <div><p className="font-medium text-[var(--color-text-primary)]">Analytics aggregation</p><p className="mt-0.5 text-xs text-[var(--color-text-secondary)]">Publish business-ready Gold performance metrics.</p></div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
 

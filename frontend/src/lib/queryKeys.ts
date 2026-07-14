@@ -28,6 +28,10 @@ export const queryKeys = {
       ['analytics', 'seller-performance', limit] as const,
     paymentDistribution: () => ['analytics', 'payment-distribution'] as const,
   },
+  scd: {
+    summary: () => ['scd', 'summary'] as const,
+    history: (customerId: string) => ['scd', 'history', customerId] as const,
+  },
   quality: {
     validationResults: () => ['quality', 'validation-results'] as const,
     rowCounts: () => ['quality', 'row-counts'] as const,

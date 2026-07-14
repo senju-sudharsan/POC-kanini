@@ -25,12 +25,15 @@ import { usePaymentDistribution } from '@/features/analytics/hooks/usePaymentDis
 import { useRevenueTrend } from '@/features/analytics/hooks/useRevenueTrend'
 import { useSellerPerformance } from '@/features/analytics/hooks/useSellerPerformance'
 import { useTopCategories } from '@/features/analytics/hooks/useTopCategories'
-import { formatCompactNumber, formatCurrency, formatNumber, formatPercentage } from '@/lib/formatters'
+import { useCustomerSCDHistory } from '@/features/scd/hooks/useCustomerSCDHistory'
+import { useSCDSummary } from '@/features/scd/hooks/useSCDSummary'
+import { formatAbsoluteTime, formatCompactNumber, formatCurrency, formatNumber, formatPercentage } from '@/lib/formatters'
 import type { RevenueTrendGranularity } from '@/types/analytics'
 
 const GRANULARITIES: RevenueTrendGranularity[] = ['day', 'week', 'month']
 const PAYMENT_COLORS = ['#DC2626', '#7F1D1D', '#6B7280', '#111827']
 const TREEMAP_COLORS = ['#FECACA', '#F87171', '#EF4444', '#DC2626']
+const DEFAULT_SCD_CUSTOMER_ID = '00012a2ce6f8dcda20d059ce98491703'
 
 function SectionError({ message, retry }: { message?: string; retry: () => void }) {
   return <ErrorState message={message} onRetry={retry} />
@@ -57,17 +60,20 @@ export function BusinessIntelligencePage() {
   const topCategories = useTopCategories(10)
   const sellerPerformance = useSellerPerformance(10)
   const paymentDistribution = usePaymentDistribution()
+  const scdSummary = useSCDSummary()
+  const customerHistory = useCustomerSCDHistory(DEFAULT_SCD_CUSTOMER_ID)
   const overview = revenueTrend.data
   const treemapData: Array<{ [key: string]: unknown }> = overview?.geography.map((item) => ({ ...item })) ?? []
   const paymentMethods = paymentDistribution.data?.methods.map((method) => ({
     ...method,
     type: method.type === 'NOT_DEFINED' ? 'Unknown' : method.type,
   })) ?? []
+  const changedVersions = customerHistory.data?.versions.slice(0, 2) ?? []
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="flex min-h-screen min-w-0 flex-col">
       <TopBar title="Business Intelligence" description="Executive view of warehouse performance and data maturity" />
-      <main className="flex-1 space-y-6 p-6">
+      <main className="flex-1 space-y-6 p-6 pb-6">
         <section className="rounded-[var(--radius-card)] border border-red-950/70 bg-gradient-to-r from-[#2a0b0b] via-[var(--color-surface-2)] to-[var(--color-surface-2)] p-6">
           <p className="text-xs font-medium uppercase tracking-[0.2em] text-red-400">Executive analytics</p>
           <div className="mt-2 flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
@@ -144,6 +150,28 @@ export function BusinessIntelligencePage() {
             {overview && <div className="space-y-5"><div><p className="text-xs uppercase tracking-wider text-[var(--color-text-muted)]">Quality score</p><p className="mt-1 text-4xl font-semibold tabular-nums text-[var(--color-text-primary)]">{overview.dataQuality.score}<span className="text-lg text-red-300">/100</span></p></div><div className="flex items-center gap-2 text-sm"><CheckCircle2 className="h-4 w-4 text-red-400" /><span className="text-[var(--color-text-secondary)]">Validation</span><span className="ml-auto capitalize text-red-200">{overview.dataQuality.validationStatus}</span></div><div className="grid grid-cols-3 gap-2 border-t border-red-950/60 pt-4">{(['bronze', 'silver', 'gold'] as const).map((layer) => <div key={layer}><p className="text-xs capitalize text-[var(--color-text-muted)]">{layer}</p><p className="mt-1 text-xl font-semibold tabular-nums text-[var(--color-text-primary)]">{overview.dataQuality.tableCounts[layer]}</p><p className="text-xs text-[var(--color-text-muted)]">tables</p></div>)}</div></div>}
           </CardContent></Card>
         </div>
+
+        <section className="space-y-4" aria-labelledby="scd-title">
+          <div>
+            <h2 id="scd-title" className="text-base font-semibold text-[var(--color-text-primary)]">Slowly Changing Dimensions</h2>
+            <p className="mt-1 text-xs text-[var(--color-text-muted)]">Customer attribute governance and version history from Silver customers_scd.</p>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <Card className="min-h-30 border-[#7C3AED] p-4"><CardTitle className="text-[var(--color-text-primary)]">SCD Type 1</CardTitle><p className="mt-2 text-xs leading-relaxed text-[var(--color-text-secondary)]">Overwrites the current customer city and state without creating a history version.</p></Card>
+            <Card className="min-h-30 border-[#7C3AED] p-4"><CardTitle className="text-[var(--color-text-primary)]">SCD Type 2</CardTitle><p className="mt-2 text-xs leading-relaxed text-[var(--color-text-secondary)]">Expires changed attributes and creates the next customer version.</p></Card>
+            <Card className="min-h-30 border-[#8B5CF6] p-4"><CardTitle className="text-[var(--color-text-primary)]">Active Records</CardTitle>{scdSummary.isLoading ? <LoadingState variant="stat" className="mt-3" /> : <p className="mt-3 text-2xl font-semibold tabular-nums text-[#A855F7]">{formatCompactNumber(scdSummary.data?.activeRecords)}</p>}</Card>
+            <Card className="min-h-30 border-[#8B5CF6] p-4"><CardTitle className="text-[var(--color-text-primary)]">Historical Records</CardTitle>{scdSummary.isLoading ? <LoadingState variant="stat" className="mt-3" /> : <p className="mt-3 text-2xl font-semibold tabular-nums text-[#A855F7]">{formatCompactNumber(scdSummary.data?.historicalRecords)}</p>}</Card>
+            <Card className="min-h-30 border-[#8B5CF6] p-4"><CardTitle className="text-[var(--color-text-primary)]">Multi-Version Customers</CardTitle>{scdSummary.isLoading ? <LoadingState variant="stat" className="mt-3" /> : <p className="mt-3 text-2xl font-semibold tabular-nums text-[#A855F7]">{formatCompactNumber(scdSummary.data?.customersWithMultipleVersions)}</p>}</Card>
+          </div>
+          {scdSummary.isError && <SectionError message={scdSummary.error instanceof Error ? scdSummary.error.message : undefined} retry={() => scdSummary.refetch()} />}
+          <Card className="border-[#7C3AED]">
+            <CardHeader><div><CardTitle className="text-[var(--color-text-primary)]">SCD Version Timeline</CardTitle><p className="mt-1 text-xs text-[var(--color-text-muted)]">The two records created by the customer location change.</p></div></CardHeader>
+            <CardContent>
+              {customerHistory.isLoading && <LoadingState variant="table-row" count={2} />}
+              {customerHistory.data && <div className="flex flex-col gap-3 xl:flex-row xl:items-stretch">{changedVersions.map((version, index) => <div key={version.versionNumber} className="flex flex-1 flex-col xl:flex-row xl:items-stretch"><div className={version.isCurrent ? 'flex-1 rounded-[var(--radius-control)] border border-[#A855F7] bg-[#7C3AED]/10 p-4' : 'flex-1 rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface-1)] p-4 opacity-75'}><div className="flex items-center justify-between gap-3"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#7C3AED] text-xs font-semibold text-white">{version.versionNumber}</span><span className={version.isCurrent ? 'rounded-full bg-[#A855F7] px-2.5 py-1 text-xs font-medium text-white' : 'rounded-full bg-[var(--color-surface-3)] px-2.5 py-1 text-xs font-medium text-[var(--color-text-secondary)]'}>{version.isCurrent ? 'Current' : 'Historical'}</span></div><p className="mt-4 text-sm font-semibold text-[var(--color-text-primary)]">{version.customerCity ?? 'Unknown city'}</p><p className="mt-1 text-xs text-[var(--color-text-secondary)]">{version.customerState ?? 'Unknown state'}</p><dl className="mt-4 space-y-2 text-xs"><div className="flex justify-between gap-3"><dt className="text-[var(--color-text-muted)]">Effective start</dt><dd className="text-right text-[var(--color-text-secondary)]">{formatAbsoluteTime(version.effectiveStartDate)}</dd></div><div className="flex justify-between gap-3"><dt className="text-[var(--color-text-muted)]">Effective end</dt><dd className="text-right text-[var(--color-text-secondary)]">{formatAbsoluteTime(version.effectiveEndDate)}</dd></div><div className="flex justify-between gap-3"><dt className="text-[var(--color-text-muted)]">Current flag</dt><dd className="text-[#A855F7]">{version.isCurrent ? 'True' : 'False'}</dd></div></dl></div>{index < changedVersions.length - 1 && <div className="flex h-8 items-center justify-center xl:h-auto xl:w-12"><span className="h-px w-6 bg-[#8B5CF6] xl:w-8" /><span className="ml-1 text-[#A855F7]">→</span><span className="sr-only">Change detected</span></div>}</div>)}</div>}
+            </CardContent>
+          </Card>
+        </section>
       </main>
     </div>
   )
