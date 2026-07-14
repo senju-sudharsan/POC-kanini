@@ -19,6 +19,12 @@ export interface MedallionTransformation {
   description: string
 }
 
+export interface MedallionTransformationStory {
+  rawState: string
+  steps: string[]
+  resultingState: string
+}
+
 export type ValidationStatus = 'passed' | 'failed' | 'warning'
 
 export interface MedallionTableValidation {
@@ -34,4 +40,10 @@ export interface MedallionTableDetailResponse {
   sourceTables: string[]
   transformations: MedallionTransformation[]
   validation: MedallionTableValidation
+  purpose: string
+  businessValue: string
+  consumers: string[]
+  businessQuestions: string[]
+  transformationStory: MedallionTransformationStory
+  lineageJourney: string[]
 }

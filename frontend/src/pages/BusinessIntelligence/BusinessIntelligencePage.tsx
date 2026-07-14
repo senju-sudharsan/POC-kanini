@@ -1,7 +1,22 @@
 import { useState } from 'react'
-import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, Tooltip, XAxis, YAxis } from 'recharts'
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  Treemap,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
+import type { TreemapNode } from 'recharts'
+import { Award, Building2, CheckCircle2, ShoppingBag, Store, Users } from 'lucide-react'
 import { TopBar } from '@/components/layout/TopBar'
-import { ChartContainer, chartColors, chartTooltipStyle } from '@/components/charts/ChartContainer'
+import { ChartContainer, chartTooltipStyle } from '@/components/charts/ChartContainer'
 import { ErrorState } from '@/components/feedback/ErrorState'
 import { LoadingState } from '@/components/feedback/LoadingState'
 import { Button } from '@/components/ui/button'
@@ -10,46 +25,126 @@ import { usePaymentDistribution } from '@/features/analytics/hooks/usePaymentDis
 import { useRevenueTrend } from '@/features/analytics/hooks/useRevenueTrend'
 import { useSellerPerformance } from '@/features/analytics/hooks/useSellerPerformance'
 import { useTopCategories } from '@/features/analytics/hooks/useTopCategories'
-import { formatCurrency, formatNumber, formatPercentage } from '@/lib/formatters'
+import { formatCompactNumber, formatCurrency, formatNumber, formatPercentage } from '@/lib/formatters'
 import type { RevenueTrendGranularity } from '@/types/analytics'
 
 const GRANULARITIES: RevenueTrendGranularity[] = ['day', 'week', 'month']
+const PAYMENT_COLORS = ['#DC2626', '#7F1D1D', '#6B7280', '#111827']
+const TREEMAP_COLORS = ['#FECACA', '#F87171', '#EF4444', '#DC2626']
+
+function SectionError({ message, retry }: { message?: string; retry: () => void }) {
+  return <ErrorState message={message} onRetry={retry} />
+}
+
+function RevenueTreemapTile({ x, y, width, height, name, value, root }: TreemapNode) {
+  const highestRevenue = Math.max(...(root?.children?.map((node) => node.value) ?? [value]), 1)
+  const intensity = value / highestRevenue
+  const color = TREEMAP_COLORS[Math.min(TREEMAP_COLORS.length - 1, Math.floor(intensity * TREEMAP_COLORS.length))]
+  const showRevenue = width > 105 && height > 58
+
+  return (
+    <g>
+      <rect x={x} y={y} width={width} height={height} fill={color} stroke="var(--color-surface-0)" strokeWidth={3} rx={3} />
+      {width > 50 && height > 32 && <text x={x + 10} y={y + 20} fill="#450A0A" fontSize={13} fontWeight={700}>{name}</text>}
+      {showRevenue && <text x={x + 10} y={y + 39} fill="#450A0A" fontSize={11}>{formatCurrency(value)}</text>}
+    </g>
+  )
+}
 
 export function BusinessIntelligencePage() {
   const [granularity, setGranularity] = useState<RevenueTrendGranularity>('month')
   const revenueTrend = useRevenueTrend(granularity)
-  const topCategories = useTopCategories()
-  const sellerPerformance = useSellerPerformance()
+  const topCategories = useTopCategories(10)
+  const sellerPerformance = useSellerPerformance(10)
   const paymentDistribution = usePaymentDistribution()
+  const overview = revenueTrend.data
+  const treemapData: Array<{ [key: string]: unknown }> = overview?.geography.map((item) => ({ ...item })) ?? []
+  const paymentMethods = paymentDistribution.data?.methods.map((method) => ({
+    ...method,
+    type: method.type === 'NOT_DEFINED' ? 'Unknown' : method.type,
+  })) ?? []
+
   return (
     <div className="flex flex-1 flex-col">
-      <TopBar title="Business Intelligence" description="Revenue, categories, sellers, and payments" />
-      <div className="flex-1 space-y-6 p-6">
-        <Card><CardHeader><div><CardTitle>Revenue trend</CardTitle><p className="mt-1 text-xs text-[var(--color-text-muted)]">Gold-layer revenue by reporting period.</p></div><div className="flex gap-1">{GRANULARITIES.map((option) => <Button key={option} size="sm" variant={granularity === option ? 'primary' : 'ghost'} onClick={() => setGranularity(option)}>{option}</Button>)}</div></CardHeader><CardContent>
-          {revenueTrend.isLoading && <LoadingState variant="chart" />}
-          {revenueTrend.isError && <ErrorState message={revenueTrend.error instanceof Error ? revenueTrend.error.message : undefined} onRetry={() => revenueTrend.refetch()} />}
-          {revenueTrend.data && <ChartContainer isEmpty={revenueTrend.data.points.length === 0} emptyTitle="No revenue trend available"><LineChart data={revenueTrend.data.points} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}><CartesianGrid vertical={false} stroke="var(--color-border)" /><XAxis dataKey="period" tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} /><YAxis tickFormatter={(value: number) => formatCurrency(value)} tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} width={76} /><Tooltip {...chartTooltipStyle} formatter={(value) => formatCurrency(Number(value), true)} /><Line type="monotone" dataKey="revenue" name="Revenue" stroke={chartColors[0]} strokeWidth={2} dot={false} /></LineChart></ChartContainer>}
-        </CardContent></Card>
+      <TopBar title="Business Intelligence" description="Executive view of warehouse performance and data maturity" />
+      <main className="flex-1 space-y-6 p-6">
+        <section className="rounded-[var(--radius-card)] border border-red-950/70 bg-gradient-to-r from-[#2a0b0b] via-[var(--color-surface-2)] to-[var(--color-surface-2)] p-6">
+          <p className="text-xs font-medium uppercase tracking-[0.2em] text-red-400">Executive analytics</p>
+          <div className="mt-2 flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-text-primary)]">Performance, trusted by the warehouse.</h2>
+              <p className="mt-1 text-sm text-[var(--color-text-secondary)]">Gold-layer revenue intelligence with customer, seller, payment, and geographic context.</p>
+            </div>
+            <span className="inline-flex items-center gap-2 text-xs font-medium text-red-300"><span className="h-2 w-2 rounded-full bg-red-500" />Live warehouse metrics</span>
+          </div>
+        </section>
+
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Executive KPIs">
+          {revenueTrend.isLoading && Array.from({ length: 4 }).map((_, index) => <Card key={index}><LoadingState variant="stat" /></Card>)}
+          {revenueTrend.isError && <div className="col-span-full"><SectionError message={revenueTrend.error instanceof Error ? revenueTrend.error.message : undefined} retry={() => revenueTrend.refetch()} /></div>}
+          {overview && [
+            { label: 'Total Revenue', value: formatCurrency(overview.kpis.totalRevenue), detail: 'All Gold sales periods', icon: Award },
+            { label: 'Total Orders', value: formatCompactNumber(overview.kpis.totalOrders), detail: 'Orders recorded in sales summary', icon: ShoppingBag },
+            { label: 'Total Customers', value: formatCompactNumber(overview.kpis.totalCustomers), detail: 'Unique customer identities', icon: Users },
+            { label: 'Total Sellers', value: formatCompactNumber(overview.kpis.totalSellers), detail: 'Active Gold performance records', icon: Store },
+          ].map(({ label, value, detail, icon: Icon }) => (
+            <Card key={label} className="border-red-950/60 bg-gradient-to-br from-[var(--color-surface-2)] to-[#1c1011]">
+              <div className="flex items-center justify-between"><span className="text-sm font-medium text-[var(--color-text-secondary)]">{label}</span><Icon className="h-4 w-4 text-red-400" /></div>
+              <p className="mt-5 tabular-nums text-3xl font-semibold tracking-tight text-[var(--color-text-primary)]">{value}</p>
+              <p className="mt-2 text-xs text-[var(--color-text-muted)]">{detail}</p>
+            </Card>
+          ))}
+        </section>
+
+        <Card className="border-red-950/60">
+          <CardHeader><div><CardTitle className="text-[var(--color-text-primary)]">Revenue Trend</CardTitle><p className="mt-1 text-xs text-[var(--color-text-muted)]">Revenue growth by reporting period from Gold sales_summary.</p></div><div className="flex gap-1">{GRANULARITIES.map((option) => <Button key={option} size="sm" variant={granularity === option ? 'primary' : 'ghost'} onClick={() => setGranularity(option)}>{option}</Button>)}</div></CardHeader>
+          <CardContent>
+            {revenueTrend.isLoading && <LoadingState variant="chart" />}
+            {revenueTrend.isError && <SectionError message={revenueTrend.error instanceof Error ? revenueTrend.error.message : undefined} retry={() => revenueTrend.refetch()} />}
+            {overview && <ChartContainer isEmpty={overview.points.length === 0} emptyTitle="No revenue trend available"><LineChart data={overview.points} margin={{ top: 16, right: 16, bottom: 0, left: 8 }}><defs><linearGradient id="revenueLine" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#DC2626" /><stop offset="100%" stopColor="#F97316" /></linearGradient></defs><CartesianGrid vertical={false} stroke="var(--color-border)" /><XAxis dataKey="period" tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} minTickGap={28} /><YAxis tickFormatter={(value: number) => formatCurrency(value)} tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} width={76} /><Tooltip {...chartTooltipStyle} formatter={(value) => formatCurrency(Number(value), true)} /><Line type="monotone" dataKey="revenue" name="Revenue" stroke="url(#revenueLine)" strokeWidth={3} dot={false} activeDot={{ r: 5, fill: '#EF4444' }} /></LineChart></ChartContainer>}
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-          <Card><CardHeader><div><CardTitle>Top categories</CardTitle><p className="mt-1 text-xs text-[var(--color-text-muted)]">Highest revenue categories returned by the warehouse.</p></div></CardHeader><CardContent>
+          <Card className="border-red-950/60"><CardHeader><div><CardTitle className="text-[var(--color-text-primary)]">Top Product Categories</CardTitle><p className="mt-1 text-xs text-[var(--color-text-muted)]">Highest-revenue categories with units sold from Gold product_performance.</p></div></CardHeader><CardContent>
             {topCategories.isLoading && <LoadingState variant="chart" />}
-            {topCategories.isError && <ErrorState message={topCategories.error instanceof Error ? topCategories.error.message : undefined} onRetry={() => topCategories.refetch()} />}
-            {topCategories.data && <ChartContainer isEmpty={topCategories.data.categories.length === 0} emptyTitle="No category data available"><BarChart data={topCategories.data.categories} layout="vertical" margin={{ top: 4, right: 8, bottom: 0, left: 8 }}><CartesianGrid horizontal={false} stroke="var(--color-border)" /><XAxis type="number" tickFormatter={(value: number) => formatCurrency(value)} tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} /><YAxis type="category" dataKey="category" width={120} tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} /><Tooltip {...chartTooltipStyle} formatter={(value, name) => String(name) === 'revenue' ? formatCurrency(Number(value), true) : formatNumber(Number(value))} /><Bar dataKey="revenue" name="revenue" fill={chartColors[1]} radius={[0, 4, 4, 0]} /></BarChart></ChartContainer>}
+            {topCategories.isError && <SectionError message={topCategories.error instanceof Error ? topCategories.error.message : undefined} retry={() => topCategories.refetch()} />}
+            {topCategories.data && <ChartContainer isEmpty={topCategories.data.categories.length === 0} emptyTitle="No category data available"><BarChart data={topCategories.data.categories} layout="vertical" margin={{ top: 4, right: 12, bottom: 0, left: 8 }}><CartesianGrid horizontal={false} stroke="var(--color-border)" /><XAxis type="number" tickFormatter={(value: number) => formatCurrency(value)} tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} /><YAxis type="category" dataKey="category" width={128} tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} /><Tooltip {...chartTooltipStyle} formatter={(value, name) => String(name) === 'Revenue' ? formatCurrency(Number(value), true) : formatNumber(Number(value))} /><Bar dataKey="revenue" name="Revenue" fill="#991B1B" radius={[0, 4, 4, 0]} /></BarChart></ChartContainer>}
+            {topCategories.data && <p className="mt-3 text-xs text-[var(--color-text-muted)]">Top category volume: {formatNumber(topCategories.data.categories[0]?.unitsSold ?? 0)} units sold.</p>}
           </CardContent></Card>
-          <Card><CardHeader><div><CardTitle>Payment distribution</CardTitle><p className="mt-1 text-xs text-[var(--color-text-muted)]">Payment-method mix from completed orders.</p></div></CardHeader><CardContent>
+
+          <Card className="border-red-950/60"><CardHeader><div><CardTitle className="text-[var(--color-text-primary)]">Payment Distribution</CardTitle><p className="mt-1 text-xs text-[var(--color-text-muted)]">Customer payment behavior from Silver payments.</p></div></CardHeader><CardContent>
             {paymentDistribution.isLoading && <LoadingState variant="chart" />}
-            {paymentDistribution.isError && <ErrorState message={paymentDistribution.error instanceof Error ? paymentDistribution.error.message : undefined} onRetry={() => paymentDistribution.refetch()} />}
-            {paymentDistribution.data && <><ChartContainer isEmpty={paymentDistribution.data.methods.length === 0} emptyTitle="No payment data available"><PieChart><Pie data={paymentDistribution.data.methods} dataKey="count" nameKey="type" innerRadius={62} outerRadius={96} paddingAngle={2}>{paymentDistribution.data.methods.map((method, index) => <Cell key={method.type} fill={chartColors[index % chartColors.length]} />)}</Pie><Tooltip {...chartTooltipStyle} formatter={(value) => formatNumber(Number(value))} /><Legend wrapperStyle={{ fontSize: '12px', color: 'var(--color-text-secondary)' }} /></PieChart></ChartContainer><div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--color-text-muted)]">{paymentDistribution.data.methods.map((method) => <span key={method.type}>{method.type}: {formatPercentage(method.percentage)}</span>)}</div></>}
+            {paymentDistribution.isError && <SectionError message={paymentDistribution.error instanceof Error ? paymentDistribution.error.message : undefined} retry={() => paymentDistribution.refetch()} />}
+            {paymentDistribution.data && <><ChartContainer isEmpty={paymentMethods.length === 0} emptyTitle="No payment data available"><PieChart><Pie data={paymentMethods} dataKey="count" nameKey="type" innerRadius={64} outerRadius={96} paddingAngle={2}>{paymentMethods.map((method, index) => <Cell key={method.type} fill={PAYMENT_COLORS[index % PAYMENT_COLORS.length]} />)}</Pie><Tooltip {...chartTooltipStyle} formatter={(value) => formatNumber(Number(value))} /></PieChart></ChartContainer><div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">{paymentMethods.map((method, index) => <div key={method.type} className="flex items-center justify-between text-[var(--color-text-secondary)]"><span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: PAYMENT_COLORS[index % PAYMENT_COLORS.length] }} />{method.type}</span><span>{formatPercentage(method.percentage)}</span></div>)}</div></>}
           </CardContent></Card>
         </div>
 
-        <Card><CardHeader><div><CardTitle>Seller performance</CardTitle><p className="mt-1 text-xs text-[var(--color-text-muted)]">Revenue-sorted seller performance from the Gold layer.</p></div></CardHeader><CardContent>
-          {sellerPerformance.isLoading && <LoadingState variant="table-row" count={8} />}
-          {sellerPerformance.isError && <ErrorState message={sellerPerformance.error instanceof Error ? sellerPerformance.error.message : undefined} onRetry={() => sellerPerformance.refetch()} />}
-          {sellerPerformance.data && <div className="overflow-x-auto"><table className="w-full min-w-[700px] text-left text-sm"><thead className="border-b border-[var(--color-border)] text-xs text-[var(--color-text-muted)]"><tr><th className="pb-3 font-medium">Seller</th><th className="pb-3 text-right font-medium">Orders fulfilled</th><th className="pb-3 text-right font-medium">Revenue</th><th className="pb-3 text-right font-medium">Average review</th></tr></thead><tbody className="divide-y divide-[var(--color-border)]">{sellerPerformance.data.sellers.map((seller) => <tr key={seller.sellerId}><td className="py-3 font-mono text-xs text-[var(--color-text-primary)]">{seller.sellerId}</td><td className="py-3 text-right tabular-nums text-[var(--color-text-secondary)]">{formatNumber(seller.ordersFulfilled)}</td><td className="py-3 text-right tabular-nums text-[var(--color-text-secondary)]">{formatCurrency(seller.revenue, true)}</td><td className="py-3 text-right tabular-nums text-[var(--color-text-secondary)]">{seller.avgReviewScore.toFixed(2)}</td></tr>)}</tbody></table></div>}
-        </CardContent></Card>
-      </div>
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+          <Card className="border-red-950/60"><CardHeader><div><CardTitle className="text-[var(--color-text-primary)]">Seller Leaderboard</CardTitle><p className="mt-1 text-xs text-[var(--color-text-muted)]">Top 10 revenue leaders from Gold seller_performance.</p></div></CardHeader><CardContent>
+            {sellerPerformance.isLoading && <LoadingState variant="table-row" count={8} />}
+            {sellerPerformance.isError && <SectionError message={sellerPerformance.error instanceof Error ? sellerPerformance.error.message : undefined} retry={() => sellerPerformance.refetch()} />}
+            {sellerPerformance.data && <div className="space-y-2">{sellerPerformance.data.sellers.map((seller, index) => <div key={seller.sellerId} className="flex items-center gap-3 rounded-lg border border-red-950/40 bg-[#180f10] px-3 py-2.5"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red-950 text-xs font-semibold text-red-200">{index + 1}</span><span className="min-w-0 flex-1 truncate font-mono text-xs text-[var(--color-text-primary)]">{seller.sellerId}</span><div className="text-right"><p className="tabular-nums text-sm font-medium text-[var(--color-text-primary)]">{formatCurrency(seller.revenue, true)}</p><p className="text-xs text-[var(--color-text-muted)]">{formatNumber(seller.ordersFulfilled)} fulfilled</p></div></div>)}</div>}
+          </CardContent></Card>
+
+          <Card className="border-red-950/60"><CardHeader><div><CardTitle className="text-[var(--color-text-primary)]">Customer Funnel</CardTitle><p className="mt-1 text-xs text-[var(--color-text-muted)]">Warehouse row counts showing the customer-to-payment journey.</p></div></CardHeader><CardContent>
+            {revenueTrend.isLoading && <LoadingState variant="chart" />}
+            {overview && <div className="space-y-3 pt-1">{overview.funnel.map((stage, index) => { const percent = Math.max(38, 100 - index * 18); return <div key={stage.stage} className="mx-auto" style={{ width: `${percent}%` }}><div className="flex items-center justify-between bg-gradient-to-r from-[#7F1D1D] to-[#EF4444] px-4 py-3 text-sm text-white"><span>{stage.stage}</span><span className="font-semibold tabular-nums">{formatCompactNumber(stage.count)}</span></div>{index < overview.funnel.length - 1 && <div className="mx-auto h-3 w-px bg-red-800" />}</div> })}</div>}
+          </CardContent></Card>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.35fr_0.65fr]">
+          <Card className="border-red-950/60"><CardHeader><div><CardTitle className="text-[var(--color-text-primary)]">Geographic Revenue Distribution</CardTitle><p className="mt-1 text-xs text-[var(--color-text-muted)]">Revenue concentration by state, joined to Bronze geolocation reference data.</p></div></CardHeader><CardContent>
+            {revenueTrend.isLoading && <LoadingState variant="chart" />}
+            {overview && <ChartContainer isEmpty={treemapData.length === 0} emptyTitle="No geographic revenue available"><Treemap data={treemapData} dataKey="revenue" nameKey="state" aspectRatio={4 / 3} nodeGap={3} content={RevenueTreemapTile} colorPanel={TREEMAP_COLORS}><Tooltip {...chartTooltipStyle} formatter={(value) => formatCurrency(Number(value), true)} /></Treemap></ChartContainer>}
+          </CardContent></Card>
+
+          <Card className="border-red-950/60 bg-gradient-to-b from-[#210f11] to-[var(--color-surface-2)]"><CardHeader><div><CardTitle className="text-[var(--color-text-primary)]">Pipeline &amp; Data Quality</CardTitle><p className="mt-1 text-xs text-[var(--color-text-muted)]">Warehouse metadata posture.</p></div><Building2 className="h-5 w-5 text-red-400" /></CardHeader><CardContent>
+            {revenueTrend.isLoading && <LoadingState variant="stat" />}
+            {overview && <div className="space-y-5"><div><p className="text-xs uppercase tracking-wider text-[var(--color-text-muted)]">Quality score</p><p className="mt-1 text-4xl font-semibold tabular-nums text-[var(--color-text-primary)]">{overview.dataQuality.score}<span className="text-lg text-red-300">/100</span></p></div><div className="flex items-center gap-2 text-sm"><CheckCircle2 className="h-4 w-4 text-red-400" /><span className="text-[var(--color-text-secondary)]">Validation</span><span className="ml-auto capitalize text-red-200">{overview.dataQuality.validationStatus}</span></div><div className="grid grid-cols-3 gap-2 border-t border-red-950/60 pt-4">{(['bronze', 'silver', 'gold'] as const).map((layer) => <div key={layer}><p className="text-xs capitalize text-[var(--color-text-muted)]">{layer}</p><p className="mt-1 text-xl font-semibold tabular-nums text-[var(--color-text-primary)]">{overview.dataQuality.tableCounts[layer]}</p><p className="text-xs text-[var(--color-text-muted)]">tables</p></div>)}</div></div>}
+          </CardContent></Card>
+        </div>
+      </main>
     </div>
   )
 }

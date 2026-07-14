@@ -2,10 +2,10 @@ import { useQuery } from '@tanstack/react-query'
 import { getSellerPerformance } from '@/services/analyticsApi'
 import { queryKeys } from '@/lib/queryKeys'
 
-export function useSellerPerformance(limit = 25, offset = 0, sort = 'revenue_desc') {
+export function useSellerPerformance(limit = 10) {
   return useQuery({
-    queryKey: queryKeys.analytics.sellerPerformance(limit, offset, sort),
-    queryFn: () => getSellerPerformance(limit, offset, sort),
+    queryKey: queryKeys.analytics.sellerPerformance(limit),
+    queryFn: () => getSellerPerformance(limit),
     staleTime: 5 * 60 * 1000,
   })
 }

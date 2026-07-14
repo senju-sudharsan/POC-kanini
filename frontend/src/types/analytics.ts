@@ -1,5 +1,3 @@
-import type { Pagination } from './api'
-
 export type RevenueTrendGranularity = 'day' | 'week' | 'month'
 
 export interface RevenueTrendPoint {
@@ -10,6 +8,15 @@ export interface RevenueTrendPoint {
 export interface RevenueTrendResponse {
   granularity: RevenueTrendGranularity
   points: RevenueTrendPoint[]
+  kpis: {
+    totalRevenue: number
+    totalOrders: number
+    totalCustomers: number
+    totalSellers: number
+  }
+  funnel: FunnelStage[]
+  geography: GeographicRevenue[]
+  dataQuality: DataQualityPosture
 }
 
 export interface TopCategory {
@@ -26,12 +33,10 @@ export interface SellerPerformanceRecord {
   sellerId: string
   ordersFulfilled: number
   revenue: number
-  avgReviewScore: number
 }
 
 export interface SellerPerformanceResponse {
   sellers: SellerPerformanceRecord[]
-  pagination: Pagination
 }
 
 export interface PaymentMethodDistribution {
@@ -42,4 +47,21 @@ export interface PaymentMethodDistribution {
 
 export interface PaymentDistributionResponse {
   methods: PaymentMethodDistribution[]
+}
+
+export interface FunnelStage {
+  stage: string
+  count: number
+}
+
+export interface GeographicRevenue {
+  state: string
+  revenue: number
+  orders: number
+}
+
+export interface DataQualityPosture {
+  score: number
+  validationStatus: 'passed' | 'warning' | 'unknown'
+  tableCounts: Record<'bronze' | 'silver' | 'gold', number>
 }

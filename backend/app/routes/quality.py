@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 from app.database.db import get_connection
 from datetime import datetime, timezone
+from app.routes.api_responses import success_response
 
 router = APIRouter(prefix="/api/v1/quality", tags=["Quality"])
 
@@ -16,7 +17,7 @@ def get_validation_results():
         {"check": "Payment Count Validation", "status": "passed"},
     ]
 
-    return {"results": results}
+    return success_response({"results": results})
 
 
 @router.get("/row-counts")
@@ -66,7 +67,7 @@ def get_row_counts():
     cur.close()
     conn.close()
 
-    return {"audits": audits}
+    return success_response({"audits": audits})
 
 
 @router.get("/integrity-checks")
@@ -120,14 +121,16 @@ def get_integrity_checks():
     cur.close()
     conn.close()
 
-    return {"checks": checks}
+    return success_response({"checks": checks})
 
 
 @router.get("/score")
 def get_quality_score():
 
-    return {
-        "score": 100,
-        "scale": 100,
-        "computedAt": datetime.now(timezone.utc).isoformat(),
-    }
+    return success_response(
+        {
+            "score": 100,
+            "scale": 100,
+            "computedAt": datetime.now(timezone.utc).isoformat(),
+        }
+    )

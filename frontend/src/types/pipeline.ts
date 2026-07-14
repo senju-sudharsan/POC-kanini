@@ -39,5 +39,6 @@ export interface BatchStepBreakdown {
 }
 
 export interface BatchDetailResponse extends BatchRecord {
+  finishedAt: string
   stepBreakdown?: BatchStepBreakdown[]
 }

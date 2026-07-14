@@ -24,7 +24,7 @@ export function Sidebar() {
           <div className="h-2 w-2 rounded-sm bg-white" />
         </div>
         <span className="text-sm font-semibold tracking-tight text-[var(--color-text-primary)]">
-          Commerce Intelligence
+          POC
         </span>
       </div>
 

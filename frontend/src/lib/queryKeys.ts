@@ -24,8 +24,8 @@ export const queryKeys = {
     revenueTrend: (granularity: 'day' | 'week' | 'month') =>
       ['analytics', 'revenue-trend', granularity] as const,
     topCategories: (limit: number) => ['analytics', 'top-categories', limit] as const,
-    sellerPerformance: (limit: number, offset: number, sort: string) =>
-      ['analytics', 'seller-performance', { limit, offset, sort }] as const,
+    sellerPerformance: (limit: number) =>
+      ['analytics', 'seller-performance', limit] as const,
     paymentDistribution: () => ['analytics', 'payment-distribution'] as const,
   },
   quality: {

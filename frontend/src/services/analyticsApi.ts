@@ -18,15 +18,9 @@ export function getTopCategories(limit = 10): Promise<TopCategoriesResponse> {
 }
 
 export function getSellerPerformance(
-  limit = 25,
-  offset = 0,
-  sort = 'revenue_desc'
+  limit = 10,
 ): Promise<SellerPerformanceResponse> {
-  return apiGet<SellerPerformanceResponse>('/api/v1/analytics/seller-performance', {
-    limit,
-    offset,
-    sort,
-  })
+  return apiGet<SellerPerformanceResponse>('/api/v1/analytics/seller-performance', { limit })
 }
 
 export function getPaymentDistribution(): Promise<PaymentDistributionResponse> {
