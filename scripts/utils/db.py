@@ -4,14 +4,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 def get_connection():
     return psycopg2.connect(
-        host="localhost",
-        port=os.getenv("POSTGRES_PORT"),
-        database=os.getenv("POSTGRES_DB"),
-        user=os.getenv("POSTGRES_USER"),
-        password=os.getenv("POSTGRES_PASSWORD")
+        host=os.getenv("POSTGRES_HOST", "de_poc_postgres"),
+        port=os.getenv("POSTGRES_PORT", "5432"),
+        database=os.getenv("POSTGRES_DB", "de_poc"),
+        user=os.getenv("POSTGRES_USER", "postgres"),
+        password=os.getenv("POSTGRES_PASSWORD", "postgres")
     )
+
 
 def execute_sql(sql):
     conn = get_connection()

@@ -1,22 +1,21 @@
 import psycopg2
 
 DB_CONFIG = {
-    "host": "localhost",
-    "port": 5433,
+    "host": "de_poc_postgres",
+    "port": 5432,
     "database": "de_poc",
     "user": "postgres",
     "password": "postgres"
 }
 
 SQL_FILES = [
-    "sql/silver/01_customers.sql",
-    "sql/silver/02_orders.sql",
-    "sql/silver/03_products.sql",
-    "sql/silver/04_sellers.sql",
-    "sql/silver/05_payments.sql",
-    "sql/silver/06_order_fact.sql"
+    "/opt/airflow/sql/silver/01_customers.sql",
+    "/opt/airflow/sql/silver/02_orders.sql",
+    "/opt/airflow/sql/silver/03_products.sql",
+    "/opt/airflow/sql/silver/04_sellers.sql",
+    "/opt/airflow/sql/silver/05_payments.sql",
+    "/opt/airflow/sql/silver/06_order_fact.sql"
 ]
-
 
 def execute_sql_file(cursor, file_path):
     with open(file_path, "r", encoding="utf-8") as f:

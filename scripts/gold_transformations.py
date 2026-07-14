@@ -2,19 +2,18 @@ from pathlib import Path
 import psycopg2
 
 DB_CONFIG = {
-    "host": "localhost",
-    "port": 5433,
+    "host": "de_poc_postgres",
+    "port": 5432,
     "database": "de_poc",
     "user": "postgres",
     "password": "postgres"
 }
 
 SQL_FILES = [
-    "sql/gold/01_sales_summary.sql",
-    "sql/gold/02_product_performance.sql",
-    "sql/gold/03_seller_performance.sql"
+    "/opt/airflow/sql/gold/01_sales_summary.sql",
+    "/opt/airflow/sql/gold/02_product_performance.sql",
+    "/opt/airflow/sql/gold/03_seller_performance.sql",
 ]
-
 
 def execute_sql_file(cursor, file_path):
     with open(file_path, "r", encoding="utf-8") as f:

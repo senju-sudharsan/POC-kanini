@@ -26,14 +26,15 @@ INSERT INTO silver.customers
     customer_state,
     source_batch_id
 )
-SELECT
+SELECT DISTINCT ON (customer_id)
     customer_id,
     customer_unique_id,
     customer_zip_code_prefix,
     UPPER(customer_city),
     UPPER(customer_state),
     batch_id
-FROM bronze.customers_raw;
+FROM bronze.customers_raw
+ORDER BY customer_id, batch_id DESC;
 
 SELECT COUNT(*) AS customer_count
 FROM silver.customers;
