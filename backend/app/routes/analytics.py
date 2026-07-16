@@ -1,3 +1,5 @@
+import time
+
 from fastapi import APIRouter, Query
 
 from app.database.db import get_connection
@@ -10,8 +12,19 @@ def _as_float(value):
     return float(value or 0)
 
 
+def _execute(cursor, query_name: str, query: str, params=None) -> None:
+    """Execute a query while emitting timings useful for diagnosing stalls."""
+    print(f"[ANALYTICS] Running {query_name} query...", flush=True)
+    start = time.perf_counter()
+    cursor.execute(query, params)
+    elapsed = time.perf_counter() - start
+    print(f"[ANALYTICS] {query_name} query complete ({elapsed:.3f}s)", flush=True)
+
+
 def _table_counts(cursor) -> dict[str, int]:
-    cursor.execute(
+    _execute(
+        cursor,
+        "table counts",
         """
         SELECT table_schema, COUNT(*)
         FROM information_schema.tables
@@ -37,7 +50,9 @@ def get_revenue_trend(
     conn = get_connection()
     cur = conn.cursor()
     try:
-        cur.execute(
+        _execute(
+            cur,
+            "revenue trend",
             f"""
             SELECT {date_expression} AS period, SUM(total_revenue) AS revenue
             FROM gold.sales_summary
@@ -50,33 +65,54 @@ def get_revenue_trend(
             for period, revenue in cur.fetchall()
         ]
 
-        cur.execute(
+        _execute(
+            cur,
+            "KPI",
             """
             SELECT
                 COALESCE(SUM(total_revenue), 0),
                 COALESCE(SUM(total_orders), 0)
             FROM gold.sales_summary
-            """
+            """,
         )
         revenue, orders = cur.fetchone()
-        cur.execute("SELECT COUNT(DISTINCT customer_unique_id) FROM silver.customers")
+        _execute(
+            cur,
+            "customer count",
+            "SELECT COUNT(DISTINCT customer_unique_id) FROM silver.customers",
+        )
         customers = cur.fetchone()[0]
-        cur.execute("SELECT COUNT(*) FROM gold.seller_performance")
+        _execute(cur, "seller count", "SELECT COUNT(*) FROM gold.seller_performance")
         sellers = cur.fetchone()[0]
 
-        cur.execute(
+        # Funnel stages stay at customer grain. Every subsequent stage is a
+        # subset of the preceding stage, so the UI cannot show false growth.
+        _execute(
+            cur,
+            "funnel",
             """
+            WITH payment_orders AS (
+                SELECT DISTINCT order_id::text AS order_id
+                FROM silver.payments
+            ), reviewed_orders AS (
+                SELECT DISTINCT order_id::text AS order_id
+                FROM bronze.reviews_raw
+            )
             SELECT
-                COUNT(DISTINCT customer_id),
-                COUNT(DISTINCT order_id),
-                COUNT(*),
-                (SELECT COUNT(*) FROM silver.payments)
-            FROM silver.order_fact
-            """
+                COUNT(DISTINCT o.customer_id) AS customers_with_orders,
+                COUNT(DISTINCT o.customer_id) FILTER (WHERE p.order_id IS NOT NULL) AS customers_with_payment,
+                COUNT(DISTINCT o.customer_id) FILTER (WHERE o.order_delivered_customer_date IS NOT NULL) AS customers_delivered,
+                COUNT(DISTINCT o.customer_id) FILTER (WHERE r.order_id IS NOT NULL) AS customers_reviewed
+            FROM silver.orders o
+            LEFT JOIN payment_orders p ON p.order_id = o.order_id::text
+            LEFT JOIN reviewed_orders r ON r.order_id = o.order_id::text
+            """,
         )
         funnel_counts = cur.fetchone()
 
-        cur.execute(
+        _execute(
+            cur,
+            "geography",
             """
             SELECT
                 c.customer_state,
@@ -84,28 +120,25 @@ def get_revenue_trend(
                 COUNT(DISTINCT f.order_id) AS orders
             FROM silver.order_fact f
             JOIN silver.customers c ON c.customer_id = f.customer_id
-            JOIN (
-                SELECT DISTINCT UPPER(geolocation_state) AS state
-                FROM bronze.geolocation_raw
-                WHERE geolocation_state IS NOT NULL
-            ) geo ON geo.state = c.customer_state
             GROUP BY c.customer_state
             ORDER BY revenue DESC
             LIMIT 12
-            """
+            """,
         )
         geography = [
             {"state": state, "revenue": _as_float(state_revenue), "orders": int(state_orders)}
             for state, state_revenue, state_orders in cur.fetchall()
         ]
 
-        cur.execute(
+        _execute(
+            cur,
+            "metadata.batch_control",
             """
             SELECT status, records_rejected
             FROM metadata.batch_control
             ORDER BY COALESCE(batch_end_time, batch_start_time, created_at) DESC, batch_id DESC
             LIMIT 1
-            """
+            """,
         )
         batch = cur.fetchone()
         validation_status = "unknown"
@@ -127,10 +160,10 @@ def get_revenue_trend(
                     "totalSellers": int(sellers or 0),
                 },
                 "funnel": [
-                    {"stage": "Customers", "count": int(funnel_counts[0] or 0)},
-                    {"stage": "Orders", "count": int(funnel_counts[1] or 0)},
-                    {"stage": "Order Items", "count": int(funnel_counts[2] or 0)},
-                    {"stage": "Payments", "count": int(funnel_counts[3] or 0)},
+                    {"stage": "Customers with orders", "count": int(funnel_counts[0] or 0)},
+                    {"stage": "Customers with payment", "count": int(funnel_counts[1] or 0)},
+                    {"stage": "Customers delivered", "count": int(funnel_counts[2] or 0)},
+                    {"stage": "Customers reviewed", "count": int(funnel_counts[3] or 0)},
                 ],
                 "geography": geography,
                 "dataQuality": {
@@ -146,7 +179,7 @@ def get_revenue_trend(
 
 
 @router.get("/top-categories")
-def get_top_categories(limit: int = Query(default=10, ge=1, le=25)):
+def get_top_categories(limit: int = Query(default=10, ge=1, le=100)):
     conn = get_connection()
     cur = conn.cursor()
     try:
@@ -174,7 +207,7 @@ def get_top_categories(limit: int = Query(default=10, ge=1, le=25)):
 
 
 @router.get("/seller-performance")
-def get_seller_performance(limit: int = Query(default=10, ge=1, le=10)):
+def get_seller_performance(limit: int = Query(default=10, ge=1, le=100)):
     conn = get_connection()
     cur = conn.cursor()
     try:

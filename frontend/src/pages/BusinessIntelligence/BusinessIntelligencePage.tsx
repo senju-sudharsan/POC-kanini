@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import {
   Bar,
   BarChart,
@@ -9,12 +9,10 @@ import {
   LineChart,
   Pie,
   PieChart,
-  Treemap,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts'
-import type { TreemapNode } from 'recharts'
 import { Award, Building2, CheckCircle2, ShoppingBag, Store, Users } from 'lucide-react'
 import { TopBar } from '@/components/layout/TopBar'
 import { ChartContainer, chartTooltipStyle } from '@/components/charts/ChartContainer'
@@ -33,30 +31,17 @@ import type { RevenueTrendGranularity } from '@/types/analytics'
 
 const GRANULARITIES: RevenueTrendGranularity[] = ['day', 'week', 'month']
 const PAYMENT_COLORS = ['#DC2626', '#7F1D1D', '#6B7280', '#111827']
-const TREEMAP_COLORS = ['#FECACA', '#F87171', '#EF4444', '#DC2626']
 const DEFAULT_SCD_CUSTOMER_ID = '00012a2ce6f8dcda20d059ce98491703'
 
 function SectionError({ message, retry }: { message?: string; retry: () => void }) {
   return <ErrorState message={message} onRetry={retry} />
 }
 
-function RevenueTreemapTile({ x, y, width, height, name, value, root }: TreemapNode) {
-  const highestRevenue = Math.max(...(root?.children?.map((node) => node.value) ?? [value]), 1)
-  const intensity = value / highestRevenue
-  const color = TREEMAP_COLORS[Math.min(TREEMAP_COLORS.length - 1, Math.floor(intensity * TREEMAP_COLORS.length))]
-  const showRevenue = width > 105 && height > 58
-
-  return (
-    <g>
-      <rect x={x} y={y} width={width} height={height} fill={color} stroke="var(--color-surface-0)" strokeWidth={3} rx={3} />
-      {width > 50 && height > 32 && <text x={x + 10} y={y + 20} fill="#450A0A" fontSize={13} fontWeight={700}>{name}</text>}
-      {showRevenue && <text x={x + 10} y={y + 39} fill="#450A0A" fontSize={11}>{formatCurrency(value)}</text>}
-    </g>
-  )
+function DeepDiveLink({ view }: { view: 'categories' | 'payments' | 'sellers' | 'funnel' | 'geography' }) {
+  return <Link to={`/analytics/${view}`} className="text-xs font-medium text-red-300 hover:text-red-100">Deep dive</Link>
 }
 
 export function BusinessIntelligencePage() {
-  const navigate = useNavigate()
   const [granularity, setGranularity] = useState<RevenueTrendGranularity>('month')
   const revenueTrend = useRevenueTrend(granularity)
   const topCategories = useTopCategories(10)
@@ -65,7 +50,7 @@ export function BusinessIntelligencePage() {
   const scdSummary = useSCDSummary()
   const customerHistory = useCustomerSCDHistory(DEFAULT_SCD_CUSTOMER_ID)
   const overview = revenueTrend.data
-  const treemapData: Array<{ [key: string]: unknown }> = overview?.geography.map((item) => ({ ...item })) ?? []
+  const geographyData = overview?.geography ?? []
   const paymentMethods = paymentDistribution.data?.methods.map((method) => ({
     ...method,
     type: method.type === 'NOT_DEFINED' ? 'Unknown' : method.type,
@@ -104,8 +89,8 @@ export function BusinessIntelligencePage() {
           ))}
         </section>
 
-        <Card className="cursor-pointer border-red-950/60 transition hover:border-red-700/80" onClick={() => navigate('/analytics/revenue')}>
-          <CardHeader><div><CardTitle className="text-[var(--color-text-primary)]">Revenue Trend</CardTitle><p className="mt-1 text-xs text-[var(--color-text-muted)]">Revenue growth by reporting period from Gold sales_summary.</p></div><div className="flex gap-1">{GRANULARITIES.map((option) => <Button key={option} size="sm" variant={granularity === option ? 'primary' : 'ghost'} onClick={() => setGranularity(option)}>{option}</Button>)}</div></CardHeader>
+        <Card className="border-red-950/60">
+          <CardHeader><div><CardTitle className="text-[var(--color-text-primary)]">Revenue Trend</CardTitle><p className="mt-1 text-xs text-[var(--color-text-muted)]">Revenue growth by reporting period from Gold sales_summary.</p></div><div className="flex items-center gap-2"><div className="flex gap-1" role="group" aria-label="Revenue trend granularity">{GRANULARITIES.map((option) => <Button key={option} size="sm" variant={granularity === option ? 'primary' : 'ghost'} onClick={() => setGranularity(option)} aria-pressed={granularity === option}>{option}</Button>)}</div><Link to="/analytics/revenue" className="text-xs font-medium text-red-300 hover:text-red-100">Deep dive</Link></div></CardHeader>
           <CardContent>
             {revenueTrend.isLoading && <LoadingState variant="chart" />}
             {revenueTrend.isError && <SectionError message={revenueTrend.error instanceof Error ? revenueTrend.error.message : undefined} retry={() => revenueTrend.refetch()} />}
@@ -114,14 +99,14 @@ export function BusinessIntelligencePage() {
         </Card>
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-          <Card className="cursor-pointer border-red-950/60 transition hover:border-red-700/80" onClick={() => navigate('/analytics/categories')}><CardHeader><div><CardTitle className="text-[var(--color-text-primary)]">Top Product Categories</CardTitle><p className="mt-1 text-xs text-[var(--color-text-muted)]">Highest-revenue categories with units sold from Gold product_performance.</p></div></CardHeader><CardContent>
+          <Card className="border-red-950/60"><CardHeader><div><CardTitle className="text-[var(--color-text-primary)]">Top Product Categories</CardTitle><p className="mt-1 text-xs text-[var(--color-text-muted)]">Highest-revenue categories with units sold from Gold product_performance.</p></div><DeepDiveLink view="categories" /></CardHeader><CardContent>
             {topCategories.isLoading && <LoadingState variant="chart" />}
             {topCategories.isError && <SectionError message={topCategories.error instanceof Error ? topCategories.error.message : undefined} retry={() => topCategories.refetch()} />}
             {topCategories.data && <ChartContainer isEmpty={topCategories.data.categories.length === 0} emptyTitle="No category data available"><BarChart data={topCategories.data.categories} layout="vertical" margin={{ top: 4, right: 12, bottom: 0, left: 8 }}><CartesianGrid horizontal={false} stroke="var(--color-border)" /><XAxis type="number" tickFormatter={(value: number) => formatCurrency(value)} tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} /><YAxis type="category" dataKey="category" width={128} tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} /><Tooltip {...chartTooltipStyle} formatter={(value, name) => String(name) === 'Revenue' ? formatCurrency(Number(value), true) : formatNumber(Number(value))} /><Bar dataKey="revenue" name="Revenue" fill="#991B1B" radius={[0, 4, 4, 0]} /></BarChart></ChartContainer>}
             {topCategories.data && <p className="mt-3 text-xs text-[var(--color-text-muted)]">Top category volume: {formatNumber(topCategories.data.categories[0]?.unitsSold ?? 0)} units sold.</p>}
           </CardContent></Card>
 
-          <Card className="cursor-pointer border-red-950/60 transition hover:border-red-700/80" onClick={() => navigate('/analytics/payments')}><CardHeader><div><CardTitle className="text-[var(--color-text-primary)]">Payment Distribution</CardTitle><p className="mt-1 text-xs text-[var(--color-text-muted)]">Customer payment behavior from Silver payments.</p></div></CardHeader><CardContent>
+          <Card className="border-red-950/60"><CardHeader><div><CardTitle className="text-[var(--color-text-primary)]">Payment Distribution</CardTitle><p className="mt-1 text-xs text-[var(--color-text-muted)]">Customer payment behavior from Silver payments.</p></div><DeepDiveLink view="payments" /></CardHeader><CardContent>
             {paymentDistribution.isLoading && <LoadingState variant="chart" />}
             {paymentDistribution.isError && <SectionError message={paymentDistribution.error instanceof Error ? paymentDistribution.error.message : undefined} retry={() => paymentDistribution.refetch()} />}
             {paymentDistribution.data && <><ChartContainer isEmpty={paymentMethods.length === 0} emptyTitle="No payment data available"><PieChart><Pie data={paymentMethods} dataKey="count" nameKey="type" innerRadius={64} outerRadius={96} paddingAngle={2}>{paymentMethods.map((method, index) => <Cell key={method.type} fill={PAYMENT_COLORS[index % PAYMENT_COLORS.length]} />)}</Pie><Tooltip {...chartTooltipStyle} formatter={(value) => formatNumber(Number(value))} /></PieChart></ChartContainer><div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">{paymentMethods.map((method, index) => <div key={method.type} className="flex items-center justify-between text-[var(--color-text-secondary)]"><span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: PAYMENT_COLORS[index % PAYMENT_COLORS.length] }} />{method.type}</span><span>{formatPercentage(method.percentage)}</span></div>)}</div></>}
@@ -129,22 +114,22 @@ export function BusinessIntelligencePage() {
         </div>
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-          <Card className="cursor-pointer border-red-950/60 transition hover:border-red-700/80" onClick={() => navigate('/analytics/sellers')}><CardHeader><div><CardTitle className="text-[var(--color-text-primary)]">Seller Leaderboard</CardTitle><p className="mt-1 text-xs text-[var(--color-text-muted)]">Top 10 revenue leaders from Gold seller_performance.</p></div></CardHeader><CardContent>
+          <Card className="border-red-950/60"><CardHeader><div><CardTitle className="text-[var(--color-text-primary)]">Seller Leaderboard</CardTitle><p className="mt-1 text-xs text-[var(--color-text-muted)]">Top 10 revenue leaders from Gold seller_performance.</p></div><DeepDiveLink view="sellers" /></CardHeader><CardContent>
             {sellerPerformance.isLoading && <LoadingState variant="table-row" count={8} />}
             {sellerPerformance.isError && <SectionError message={sellerPerformance.error instanceof Error ? sellerPerformance.error.message : undefined} retry={() => sellerPerformance.refetch()} />}
             {sellerPerformance.data && <div className="space-y-2">{sellerPerformance.data.sellers.map((seller, index) => <div key={seller.sellerId} className="flex items-center gap-3 rounded-lg border border-red-950/40 bg-[#180f10] px-3 py-2.5"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red-950 text-xs font-semibold text-red-200">{index + 1}</span><span className="min-w-0 flex-1 truncate font-mono text-xs text-[var(--color-text-primary)]">{seller.sellerId}</span><div className="text-right"><p className="tabular-nums text-sm font-medium text-[var(--color-text-primary)]">{formatCurrency(seller.revenue, true)}</p><p className="text-xs text-[var(--color-text-muted)]">{formatNumber(seller.ordersFulfilled)} fulfilled</p></div></div>)}</div>}
           </CardContent></Card>
 
-          <Card className="cursor-pointer border-red-950/60 transition hover:border-red-700/80" onClick={() => navigate('/analytics/funnel')}><CardHeader><div><CardTitle className="text-[var(--color-text-primary)]">Customer Funnel</CardTitle><p className="mt-1 text-xs text-[var(--color-text-muted)]">Warehouse row counts showing the customer-to-payment journey.</p></div></CardHeader><CardContent>
+          <Card className="border-red-950/60"><CardHeader><div><CardTitle className="text-[var(--color-text-primary)]">Customer Funnel</CardTitle><p className="mt-1 text-xs text-[var(--color-text-muted)]">Customer cohorts progressing through real order transitions.</p></div><DeepDiveLink view="funnel" /></CardHeader><CardContent>
             {revenueTrend.isLoading && <LoadingState variant="chart" />}
             {overview && <div className="space-y-3 pt-1">{overview.funnel.map((stage, index) => { const percent = Math.max(38, 100 - index * 18); return <div key={stage.stage} className="mx-auto" style={{ width: `${percent}%` }}><div className="flex items-center justify-between bg-gradient-to-r from-[#7F1D1D] to-[#EF4444] px-4 py-3 text-sm text-white"><span>{stage.stage}</span><span className="font-semibold tabular-nums">{formatCompactNumber(stage.count)}</span></div>{index < overview.funnel.length - 1 && <div className="mx-auto h-3 w-px bg-red-800" />}</div> })}</div>}
           </CardContent></Card>
         </div>
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.35fr_0.65fr]">
-          <Card className="cursor-pointer border-red-950/60 transition hover:border-red-700/80" onClick={() => navigate('/analytics/geography')}><CardHeader><div><CardTitle className="text-[var(--color-text-primary)]">Geographic Revenue Distribution</CardTitle><p className="mt-1 text-xs text-[var(--color-text-muted)]">Revenue concentration by state, joined to Bronze geolocation reference data.</p></div></CardHeader><CardContent>
+          <Card className="border-red-950/60"><CardHeader><div><CardTitle className="text-[var(--color-text-primary)]">Geographic Revenue Ranking</CardTitle><p className="mt-1 text-xs text-[var(--color-text-muted)]">State revenue comparison from customer order facts.</p></div><DeepDiveLink view="geography" /></CardHeader><CardContent>
             {revenueTrend.isLoading && <LoadingState variant="chart" />}
-            {overview && <ChartContainer isEmpty={treemapData.length === 0} emptyTitle="No geographic revenue available"><Treemap data={treemapData} dataKey="revenue" nameKey="state" aspectRatio={4 / 3} nodeGap={3} content={RevenueTreemapTile} colorPanel={TREEMAP_COLORS}><Tooltip {...chartTooltipStyle} formatter={(value) => formatCurrency(Number(value), true)} /></Treemap></ChartContainer>}
+            {overview && <ChartContainer isEmpty={geographyData.length === 0} emptyTitle="No geographic revenue available"><BarChart data={geographyData} layout="vertical" margin={{ top: 4, right: 12, bottom: 0, left: 8 }}><CartesianGrid horizontal={false} stroke="var(--color-border)" /><XAxis type="number" tickFormatter={(value: number) => formatCurrency(value)} tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} /><YAxis type="category" dataKey="state" width={40} tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} /><Tooltip {...chartTooltipStyle} formatter={(value) => formatCurrency(Number(value), true)} /><Bar dataKey="revenue" name="Revenue" fill="#DC2626" radius={[0, 4, 4, 0]} /></BarChart></ChartContainer>}
           </CardContent></Card>
 
           <Card className="border-red-950/60 bg-gradient-to-b from-[#210f11] to-[var(--color-surface-2)]"><CardHeader><div><CardTitle className="text-[var(--color-text-primary)]">Pipeline &amp; Data Quality</CardTitle><p className="mt-1 text-xs text-[var(--color-text-muted)]">Warehouse metadata posture.</p></div><Building2 className="h-5 w-5 text-red-400" /></CardHeader><CardContent>

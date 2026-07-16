@@ -19,6 +19,7 @@ export interface GXValidation {
   successPercent: number
   timestamp: string
   batchId: string | null
+  runId: string | null
 }
 
 export interface QualitySummaryResponse {
@@ -31,6 +32,21 @@ export interface QualitySummaryResponse {
 
 export interface QualityHistoryResponse {
   trend: { timestamp: string; successRate: number; total: number }[]
+  executions: ValidationExecution[]
+  failureDistribution: { name: string; count: number }[]
+}
+
+export interface ValidationExecution {
+  runId: string
+  suiteName: string
+  datasource: string
+  expectationCount: number
+  passedCount: number
+  failedCount: number
+  successRate: number
+  timestamp: string
+  durationMs: number | null
+  batchId: string | null
 }
 
 export interface RowCountAuditEntry {
