@@ -11,6 +11,8 @@ LOADERS = [
     "ingestion/load_sellers.py",
     "ingestion/load_geolocation.py",
     "ingestion/load_category_translation.py"
+    ,"ingestion/load_synthetic_api.py"
+    ,"ingestion/audit_olist_source.py"
 ]
 
 for loader in LOADERS:

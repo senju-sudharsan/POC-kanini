@@ -1,69 +1,31 @@
-import { Link, useParams } from 'react-router-dom'
+import { useMemo } from 'react'
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from 'recharts'
 import { TopBar } from '@/components/layout/TopBar'
+import { ChartContainer, chartTooltipStyle } from '@/components/charts/ChartContainer'
 import { ErrorState } from '@/components/feedback/ErrorState'
 import { LoadingState } from '@/components/feedback/LoadingState'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { StatusBadge } from '@/components/ui/status-badge'
-import { useBatchDetail } from '@/features/pipeline/hooks/useBatchDetail'
+import { ObservabilityCard, ObservabilityHero, Metric } from '@/features/observability/components'
 import { useBatchHistory } from '@/features/pipeline/hooks/useBatchHistory'
 import { useLatestBatch } from '@/features/pipeline/hooks/useLatestBatch'
-import { formatAbsoluteTime, formatDuration, formatNumber } from '@/lib/formatters'
+import { formatAbsoluteTime, formatCompactNumber, formatDuration, formatNumber } from '@/lib/formatters'
 
-const PIPELINE_FEATURES = [
-  { title: 'Incremental Loading', description: 'Processes newly arrived customer source batches.' },
-  { title: 'Metadata Framework', description: 'Tracks batch timing, status, and processing volumes.' },
-  { title: 'Audit Framework', description: 'Validates warehouse records and layer-level outcomes.' },
-  { title: 'Error Logging Framework', description: 'Captures failed runs for investigation and recovery.' },
-] as const
+const STAGES = ['Bronze', 'Silver', 'Gold', 'Validation', 'GX Validation']
 
 export function PipelineHealthPage() {
-  const { batchId } = useParams()
-  const latestBatch = useLatestBatch()
-  const batchHistory = useBatchHistory()
-  const selectedBatchId = batchId ?? latestBatch.data?.batchId
-  const batchDetail = useBatchDetail(selectedBatchId)
-
-  return (
-    <div className="flex min-h-screen min-w-0 flex-col">
-      <TopBar title="Pipeline Health" description="Batch runs, duration, and validation status" />
-      <div className="flex-1 space-y-6 p-6 pb-6">
-        <Card>
-          <CardHeader><div><CardTitle>Latest batch</CardTitle><p className="mt-1 text-xs text-[var(--color-text-muted)]">Automatically refreshed every minute.</p></div></CardHeader>
-          <CardContent>
-            {latestBatch.isLoading && <LoadingState variant="card" />}
-            {latestBatch.isError && <ErrorState message={latestBatch.error instanceof Error ? latestBatch.error.message : undefined} onRetry={() => latestBatch.refetch()} />}
-            {latestBatch.data && <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5"><div><p className="text-xs text-[var(--color-text-muted)]">Batch</p><p className="mt-1 font-mono text-sm text-[var(--color-text-primary)]">{latestBatch.data.batchId}</p></div><div><p className="text-xs text-[var(--color-text-muted)]">Run status</p><div className="mt-1"><StatusBadge status={latestBatch.data.status} /></div></div><div><p className="text-xs text-[var(--color-text-muted)]">Duration</p><p className="mt-1 text-sm text-[var(--color-text-primary)]">{formatDuration(latestBatch.data.durationSeconds)}</p></div><div><p className="text-xs text-[var(--color-text-muted)]">Rows processed</p><p className="mt-1 tabular-nums text-sm text-[var(--color-text-primary)]">{formatNumber(latestBatch.data.rowsProcessed)}</p></div><div><p className="text-xs text-[var(--color-text-muted)]">Validation</p><div className="mt-1"><StatusBadge status={latestBatch.data.validationStatus} /></div></div></div>}
-          </CardContent>
-        </Card>
-
-        <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Pipeline capabilities">
-          {PIPELINE_FEATURES.map((feature) => (
-            <Card key={feature.title} className="min-h-28 p-4">
-              <CardTitle className="text-[var(--color-text-primary)]">{feature.title}</CardTitle>
-              <p className="mt-2 text-xs leading-relaxed text-[var(--color-text-secondary)]">{feature.description}</p>
-            </Card>
-          ))}
-        </section>
-
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-          <Card>
-            <CardHeader><div><CardTitle>Batch history</CardTitle><p className="mt-1 text-xs text-[var(--color-text-muted)]">Most recent backend-reported batch runs.</p></div></CardHeader>
-            <CardContent>
-              {batchHistory.isLoading && <LoadingState variant="table-row" count={6} />}
-              {batchHistory.isError && <ErrorState message={batchHistory.error instanceof Error ? batchHistory.error.message : undefined} onRetry={() => batchHistory.refetch()} />}
-              {batchHistory.data && <div className="overflow-x-auto"><table className="w-full min-w-[720px] text-left text-sm"><thead className="border-b border-[var(--color-border)] text-xs text-[var(--color-text-muted)]"><tr><th className="pb-3 font-medium">Batch</th><th className="pb-3 font-medium">Started</th><th className="pb-3 font-medium">Run</th><th className="pb-3 text-right font-medium">Duration</th><th className="pb-3 text-right font-medium">Rows</th><th className="pb-3 font-medium">Validation</th></tr></thead><tbody className="divide-y divide-[var(--color-border)]">{batchHistory.data.batches.map((batch) => <tr key={batch.batchId} className="text-[var(--color-text-secondary)]"><td className="py-3 font-mono text-xs font-medium text-[var(--color-accent-strong)]"><Link to={`/pipeline/batches/${encodeURIComponent(batch.batchId)}`} className="hover:underline">{batch.batchId}</Link></td><td className="py-3 text-xs">{formatAbsoluteTime(batch.startedAt)}</td><td className="py-3"><StatusBadge status={batch.status} /></td><td className="py-3 text-right tabular-nums">{formatDuration(batch.durationSeconds)}</td><td className="py-3 text-right tabular-nums">{formatNumber(batch.rowsProcessed)}</td><td className="py-3"><StatusBadge status={batch.validationStatus} /></td></tr>)}</tbody></table></div>}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><div><CardTitle>Batch Summary</CardTitle><p className="mt-1 text-xs text-[var(--color-text-muted)]">{batchId ? `Selected batch ${batchId}.` : 'Detail for the latest batch.'}</p></div></CardHeader>
-            <CardContent>
-              {batchDetail.isLoading && <LoadingState variant="table-row" count={6} />}
-              {batchDetail.isError && <ErrorState message={batchDetail.error instanceof Error ? batchDetail.error.message : undefined} onRetry={() => batchDetail.refetch()} />}
-              {batchDetail.data && <div className="space-y-5"><div className="grid grid-cols-2 gap-x-5 gap-y-4 text-sm"><div><p className="text-xs text-[var(--color-text-muted)]">Batch ID</p><p className="mt-1 truncate font-mono text-xs text-[var(--color-text-primary)]">{batchDetail.data.batchId}</p></div><div><p className="text-xs text-[var(--color-text-muted)]">Status</p><div className="mt-1"><StatusBadge status={batchDetail.data.status} /></div></div><div><p className="text-xs text-[var(--color-text-muted)]">Validation</p><div className="mt-1"><StatusBadge status={batchDetail.data.validationStatus} /></div></div><div><p className="text-xs text-[var(--color-text-muted)]">Duration</p><p className="mt-1 tabular-nums text-[var(--color-text-primary)]">{formatDuration(batchDetail.data.durationSeconds)}</p></div><div><p className="text-xs text-[var(--color-text-muted)]">Started</p><p className="mt-1 text-xs text-[var(--color-text-primary)]">{formatAbsoluteTime(batchDetail.data.startedAt)}</p></div><div><p className="text-xs text-[var(--color-text-muted)]">Finished</p><p className="mt-1 text-xs text-[var(--color-text-primary)]">{formatAbsoluteTime(batchDetail.data.finishedAt)}</p></div><div className="col-span-2"><p className="text-xs text-[var(--color-text-muted)]">Rows processed</p><p className="mt-1 tabular-nums text-lg font-medium text-[var(--color-text-primary)]">{formatNumber(batchDetail.data.rowsProcessed)}</p></div></div><div className="border-t border-[var(--color-border)] pt-4"><p className="mb-3 text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">Pipeline destination</p><div className="flex items-center justify-between gap-1 text-center text-xs"><div className="min-w-0 flex-1"><span className="block rounded bg-[var(--color-surface-3)] px-2 py-2 text-[var(--color-text-secondary)]">CSV</span></div><span className="text-[var(--color-text-muted)]">→</span><div className="min-w-0 flex-1"><span className="block rounded bg-[#3a1c20] px-2 py-2 text-red-200">Bronze</span></div><span className="text-[var(--color-text-muted)]">→</span><div className="min-w-0 flex-1"><span className="block rounded bg-[#542022] px-2 py-2 text-red-100">Silver</span></div><span className="text-[var(--color-text-muted)]">→</span><div className="min-w-0 flex-1"><span className="block rounded bg-[#7F1D1D] px-2 py-2 font-medium text-white">Gold</span></div></div></div></div>}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
-  )
+  const latest = useLatestBatch()
+  const historyQuery = useBatchHistory()
+  const batches = historyQuery.data?.batches ?? []
+  const last = latest.data
+  const trend = useMemo(() => [...batches].reverse().map(batch => ({ batch: `#${batch.batchId}`, duration: batch.durationSeconds, success: batch.status === 'success' ? 100 : 0, rows: batch.rowsProcessed })), [batches])
+  const successRate = batches.length ? Math.round((batches.filter(batch => batch.status === 'success').length / batches.length) * 100) : 0
+  const throughput = last && last.durationSeconds ? Math.round(last.rowsProcessed / last.durationSeconds) : 0
+  return <div className="flex min-h-screen min-w-0 flex-col"><TopBar title="Pipeline Operations" description="DAG execution health, runtime telemetry, and validation state" /><main className="flex-1 space-y-6 p-6 pb-6">
+    <ObservabilityHero eyebrow="Pipeline observability" title="See operational health before it affects data consumers." description="Warehouse execution, validation posture, and capacity signals from pipeline batch metadata." status={last ? `Last DAG run ${formatAbsoluteTime(last.startedAt)}` : 'Waiting for first DAG run'} />
+    <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"><Metric label="Records processed" value={formatCompactNumber(last?.rowsProcessed ?? 0)} detail="Latest pipeline batch" /><Metric label="Runtime" value={formatDuration(last?.durationSeconds ?? 0)} detail="Latest completed batch duration" /><Metric label="Throughput" value={`${formatCompactNumber(throughput)}/s`} detail="Records processed per second" /><Metric label="Pipeline success rate" value={`${successRate}%`} detail={`${batches.length} retained batch runs`} /></section>
+    {(latest.isLoading || historyQuery.isLoading) && <LoadingState variant="chart" />}{(latest.isError || historyQuery.isError) && <ErrorState onRetry={() => { latest.refetch(); historyQuery.refetch() }} />}
+    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.3fr_.7fr]"><ObservabilityCard title="Pipeline execution timeline" description="Latest DAG execution path. Per-task timestamps are not exposed by the existing batch API."><div className="space-y-4">{STAGES.map((stage, index) => <div key={stage} className="flex items-center gap-4"><div className="w-28 text-sm font-medium text-[var(--color-text-primary)]">{stage}</div><div className="relative h-8 flex-1 overflow-hidden rounded-md border border-red-950/60 bg-[#180f10]"><div className="h-full bg-gradient-to-r from-[#7F1D1D] via-[#DC2626] to-[#F87171]" style={{ width: `${Math.max(24, 100 - index * 12)}%` }} /></div><div className="w-28 text-right"><StatusBadge status={last?.status ?? 'warning'} /></div></div>)}</div><p className="mt-5 text-xs text-[var(--color-text-muted)]">Run started {last ? formatAbsoluteTime(last.startedAt) : '—'} · total duration {formatDuration(last?.durationSeconds ?? 0)}</p></ObservabilityCard><ObservabilityCard title="DAG monitoring view" description="Current warehouse dependency sequence and latest validation signal."><div className="mx-auto max-w-xs space-y-2">{STAGES.map((stage, index) => <div key={stage}><div className={`rounded-md border px-4 py-3 text-center text-sm font-medium ${index === STAGES.length - 1 ? 'border-red-500 bg-red-950/50 text-red-100 shadow-[0_0_16px_rgba(239,68,68,.2)]' : 'border-red-950/60 bg-[#180f10] text-[var(--color-text-primary)]'}`}>{stage}</div>{index < STAGES.length - 1 && <div className="h-5 text-center text-red-500">↓</div>}</div>)}</div></ObservabilityCard></div>
+    <div className="grid grid-cols-1 gap-6 xl:grid-cols-2"><ObservabilityCard title="Pipeline health trends" description="Success and runtime trends across retained batch metadata."><ChartContainer isEmpty={!trend.length}><AreaChart data={trend}><defs><linearGradient id="pipelineSuccess" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#EF4444" stopOpacity={.45} /><stop offset="1" stopColor="#7F1D1D" stopOpacity={0} /></linearGradient></defs><CartesianGrid vertical={false} stroke="var(--color-border)" /><XAxis dataKey="batch" tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} /><YAxis domain={[0, 100]} tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} /><Tooltip {...chartTooltipStyle} /><Area type="step" dataKey="success" name="Success %" stroke="#EF4444" fill="url(#pipelineSuccess)" strokeWidth={2.5} /></AreaChart></ChartContainer></ObservabilityCard><ObservabilityCard title="Runtime trend" description="Batch duration gives operations a quick regression signal."><ChartContainer isEmpty={!trend.length}><BarChart data={trend}><CartesianGrid vertical={false} stroke="var(--color-border)" /><XAxis dataKey="batch" tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} /><YAxis tickFormatter={value => formatDuration(Number(value))} tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} /><Tooltip {...chartTooltipStyle} formatter={value => formatDuration(Number(value))} /><Bar dataKey="duration" name="Runtime" fill="#991B1B" radius={[4, 4, 0, 0]} /></BarChart></ChartContainer></ObservabilityCard></div>
+    <ObservabilityCard title="Operational run stream" description="Latest batch executions with volume, duration, and validation outcome."><div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm"><thead className="border-b border-red-950/60 text-xs text-[var(--color-text-muted)]"><tr><th className="pb-3">Batch</th><th className="pb-3">Started</th><th className="pb-3">Run</th><th className="pb-3 text-right">Runtime</th><th className="pb-3 text-right">Records</th><th className="pb-3">Validation</th></tr></thead><tbody className="divide-y divide-red-950/40">{batches.map(batch => <tr key={batch.batchId}><td className="py-3 font-mono text-xs text-red-300">{batch.batchId}</td><td className="py-3 text-xs text-[var(--color-text-secondary)]">{formatAbsoluteTime(batch.startedAt)}</td><td className="py-3"><StatusBadge status={batch.status} /></td><td className="py-3 text-right tabular-nums">{formatDuration(batch.durationSeconds)}</td><td className="py-3 text-right tabular-nums">{formatNumber(batch.rowsProcessed)}</td><td className="py-3"><StatusBadge status={batch.validationStatus} /></td></tr>)}</tbody></table></div></ObservabilityCard>
+  </main></div>
 }

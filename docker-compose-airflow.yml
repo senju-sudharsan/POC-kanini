@@ -1,7 +1,9 @@
 services:
 
   airflow-init:
-    image: apache/airflow:2.10.0
+    build:
+      context: .
+      dockerfile: airflow/Dockerfile
     container_name: airflow-init
 
     environment:
@@ -14,6 +16,7 @@ services:
       - ./airflow/logs:/opt/airflow/logs
       - ./airflow/plugins:/opt/airflow/plugins
       - ./data:/opt/airflow/data
+      - ./great_expectations:/opt/airflow/great_expectations
 
     command: >
       bash -c "
@@ -28,7 +31,9 @@ services:
       "
 
   airflow-webserver:
-    image: apache/airflow:2.10.0
+    build:
+      context: .
+      dockerfile: airflow/Dockerfile
     container_name: airflow-webserver
 
     restart: unless-stopped
@@ -51,11 +56,14 @@ services:
       - ./scripts:/opt/airflow/scripts
       - ./sql:/opt/airflow/sql
       - ./data:/opt/airflow/data
+      - ./great_expectations:/opt/airflow/great_expectations
 
     command: webserver
 
   airflow-scheduler:
-    image: apache/airflow:2.10.0
+    build:
+      context: .
+      dockerfile: airflow/Dockerfile
     container_name: airflow-scheduler
 
     restart: unless-stopped
@@ -75,6 +83,7 @@ services:
       - ./scripts:/opt/airflow/scripts
       - ./sql:/opt/airflow/sql
       - ./data:/opt/airflow/data
+      - ./great_expectations:/opt/airflow/great_expectations
 
     command: scheduler
 

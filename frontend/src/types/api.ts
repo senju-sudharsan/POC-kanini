@@ -14,6 +14,11 @@ export interface ApiErrorEnvelope {
   }
 }
 
+/** FastAPI's default error shape for unhandled HTTP errors. */
+export interface FastApiErrorEnvelope {
+  detail?: string
+}
+
 /** Normalized error thrown by apiClient on any non-2xx response or network failure. */
 export class ApiError extends Error {
   code: string

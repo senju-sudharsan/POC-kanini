@@ -1,4 +1,4 @@
-import { ApiError, type ApiErrorEnvelope, type ApiSuccessEnvelope } from '@/types/api'
+import { ApiError, type ApiErrorEnvelope, type ApiSuccessEnvelope, type FastApiErrorEnvelope } from '@/types/api'
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
@@ -49,8 +49,9 @@ export async function apiGet<T>(
 
   if (!response.ok) {
     const errorBody = body as ApiErrorEnvelope
+    const fastApiBody = body as FastApiErrorEnvelope
     throw new ApiError(
-      errorBody?.error?.message ?? 'Something went wrong on the server.',
+      errorBody?.error?.message ?? fastApiBody?.detail ?? 'Something went wrong on the server.',
       errorBody?.error?.code ?? 'UNKNOWN_ERROR',
       response.status
     )

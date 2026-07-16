@@ -99,6 +99,22 @@ def get_latest_batch():
         conn.close()
 
 
+@router.get("/operations/latest")
+def get_latest_pipeline_operation():
+    """Dashboard-oriented Airflow operation metadata, sourced from pipeline batch records."""
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        batch = _get_batch(cur)
+        if batch is None:
+            raise HTTPException(status_code=404, detail="No pipeline batches were found.")
+        payload = _batch_payload(batch)
+        return success_response({"dagId": "warehouse_pipeline", "lastDagRun": payload})
+    finally:
+        cur.close()
+        conn.close()
+
+
 @router.get("/batch-history")
 def get_batch_history(
     limit: int = Query(default=20, ge=1, le=100),

@@ -1,0 +1,60 @@
+config_version: 3.0
+plugins_directory: plugins/
+config_variables_file_path: uncommitted/config_variables.yml
+stores:
+  expectations_store:
+    class_name: ExpectationsStore
+    store_backend:
+      class_name: TupleFilesystemStoreBackend
+      base_directory: expectations/
+  validations_store:
+    class_name: ValidationsStore
+    store_backend:
+      class_name: TupleFilesystemStoreBackend
+      base_directory: uncommitted/validations/
+  evaluation_parameter_store:
+    class_name: EvaluationParameterStore
+    store_backend:
+      class_name: InMemoryStoreBackend
+expectations_store_name: expectations_store
+validations_store_name: validations_store
+evaluation_parameter_store_name: evaluation_parameter_store
+data_docs_sites: {}
+anonymous_usage_statistics:
+  data_context_id: 8d55dea0-63db-4ed2-abf4-76b24c3cbfc1
+  enabled: false
+fluent_datasources:
+  warehouse_postgres:
+    type: sql
+    assets:
+      customers_asset:
+        type: table
+        order_by: []
+        batch_metadata: {}
+        table_name: customers
+        schema_name: silver
+      orders_asset:
+        type: table
+        order_by: []
+        batch_metadata: {}
+        table_name: orders
+        schema_name: silver
+      products_asset:
+        type: table
+        order_by: []
+        batch_metadata: {}
+        table_name: products
+        schema_name: silver
+      payments_asset:
+        type: table
+        order_by: []
+        batch_metadata: {}
+        table_name: payments
+        schema_name: silver
+    connection_string: postgresql+psycopg2://postgres:postgres@host.docker.internal:5433/de_poc
+datasources: {}
+notebooks:
+include_rendered_content:
+  globally: false
+  expectation_suite: false
+  expectation_validation_result: false

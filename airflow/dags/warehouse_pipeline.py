@@ -21,6 +21,11 @@ with DAG(
         bash_command="cd /opt/airflow/scripts && python ingestion.py",
     )
 
+    ingest_api = BashOperator(
+        task_id="synthetic_api_ingestion",
+        bash_command="cd /opt/airflow/scripts && python ingestion/load_synthetic_api.py",
+    )
+
     silver = BashOperator(
         task_id="silver_transformations",
         bash_command="cd /opt/airflow/scripts && python silver_transformations.py",
@@ -36,4 +41,9 @@ with DAG(
         bash_command="cd /opt/airflow/scripts && python validation.py",
     )
 
-    ingest >> silver >> gold >> validation
+    gx_validation = BashOperator(
+        task_id="great_expectations_validation",
+        bash_command="cd /opt/airflow/scripts && python gx_validation.py",
+    )
+
+    [ingest, ingest_api] >> silver >> gold >> validation >> gx_validation

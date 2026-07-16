@@ -1,19 +1,19 @@
 import { NavLink } from 'react-router-dom'
 import {
-  LayoutDashboard,
   Boxes,
   Activity,
   BarChart3,
   ShieldCheck,
+  Radio,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
-  { to: '/overview', label: 'Overview', icon: LayoutDashboard },
-  { to: '/medallion', label: 'Dataset Explorer', icon: Boxes },
-  { to: '/pipeline', label: 'Pipeline Health', icon: Activity },
   { to: '/analytics', label: 'Business Intelligence', icon: BarChart3 },
   { to: '/quality', label: 'Data Quality', icon: ShieldCheck },
+  { to: '/sources', label: 'Source Monitoring', icon: Radio },
+  { to: '/pipeline', label: 'Pipeline Operations', icon: Activity },
+  { to: '/medallion', label: 'Dataset Explorer', icon: Boxes },
 ] as const
 
 export function Sidebar() {
